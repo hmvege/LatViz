@@ -23,26 +23,29 @@ def check_folder(folder_name, dryrun, verbose=False):
 		if not dryrun:
 			os.mkdir(folder_name)
 
-def create_animation(figpath, observable, time_point, method, anim_type):
+def create_animation(frame_folder, gif_folder, observable, time_point, method, anim_type):
 	"""
 	Method for created gifs and movies from generated 3D figures.
 
 	Args:
-		figpath: path to figures.
+		frame_folder: path to figures to be stiched together.
+		gif_folder: folder to place gif in.
 		observable: observable we are creating a gif or a movie for.
 		method: type of 3D plot.
 	"""
 	_ANIM_TYPES = ["gif", "mp4"]
 	assert anim_type in _ANIM_TYPES, "%s is not a recognized animation type." % anim_type
 
-	animation_figure_path = os.path.join(figpath, '%s_%s_t%d.%s' % (observable, method, time_point, anim_type))
+	animation_figure_path = os.path.join(gif_folder, '%s_%s_t%d.%s' % (observable, method, time_point, anim_type))
 	if anim_type == "gif":
-		input_paths = os.path.join(figpath, '%s_t*.png' % method)
+		input_paths = os.path.join(frame_folder, '%s_t*.png' % method)
 		cmd = ['convert', '-delay', '1', '-loop', '0', input_paths, animation_figure_path]
 	else:
-		input_paths = os.path.join(figpath, '%s_t%%02d.png' % method)
+		input_paths = os.path.join(frame_folder, '%s_t%%02d.png' % method)
 		cmd = ['ffmpeg', '-framerate', '4', '-i', input_paths, '-y', '-c:v', 'libx264', '-r', '30', animation_figure_path]
-	subprocess.Popen(cmd, stdout=subprocess.PIPE)
+	proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+	read_out = proc.stdout.read()
+	# print read_out()
 	print "%s animation %s created." % (anim_type, animation_figure_path)
 
 def global_index(i, j, k, l, N):
@@ -140,7 +143,10 @@ class FieldAnimation:
 		for key in self.data:
 			obs_folder_paths = os.path.join(self.output_folder, key)
 			check_folder(obs_folder_paths, self.dryrun, verbose=self.verbose)
+			frame_folder = os.path.join(obs_folder_paths, "frames")
+			check_folder(frame_folder, self.dryrun, verbose=self.verbose)
 			self.data[key]["animation_figure_path"] = obs_folder_paths
+			self.data[key]["frame_folder"] = frame_folder
 
 	def _retrieve_field_data(self):
 		"""Function for retrieving fields."""
@@ -264,16 +270,17 @@ class FieldAnimation:
 
 			# Sets up data to be plotted			
 			for t in flow_times:
-				field_data.append(self.data[observable][t][:,:,:,time_slice])
+				field_data.append(cp.deepcopy(self.data[observable][t][:,:,:,time_slice]))
 			field_data = np.asarray(field_data)
 			field_data = np.rollaxis(field_data, 0, 4)
 
 			n_time_points = len(flow_times)
 
+			# Creates the folder to store the different flowed lattice figures in
 			time_slice_folder_path = os.path.join(time_type_folder_path, "t_eucl" + str(time_slice))
+
 		elif time_type == "euclidean":
 			# For plotting evolution in euclidean time
-
 			if time_slice not in sorted(self.data[observable].keys()):
 				raise IndexError(("Out of bounds for plotting Euclidean time "
 					"evolution at flow time %d with available points as %s" %
@@ -282,7 +289,9 @@ class FieldAnimation:
 			field_data = cp.deepcopy(self.data[observable][time_slice])
 			n_time_points = self.data[observable][time_slice].shape[-1]
 
+			# Creates folder for different times to store the figures in
 			time_slice_folder_path = os.path.join(time_type_folder_path, "t_flow" + str(time_slice))
+
 		else:
 			raise KeyError("Cannot plot in %s." % time_type)
 
@@ -305,7 +314,6 @@ class FieldAnimation:
 				vmin=min_val, vmax=max_val, output_folder=time_slice_folder_path, **kwargs)
 		else:
 			raise KeyError("Plot type %s not recognized" % plot_type)
-
 
 	def _plot_iso_surface(self, F, n_time_points, observable, time_point, file_type="png", vmin=None, vmax=None, output_folder=None, cgif=True, cmovie=True):
 		"""
@@ -445,6 +453,39 @@ class FieldAnimation:
 			create_animation(animation_figure_path, observable, time_point, "points3d", "gif")
 		if cmovie:
 			create_animation(animation_figure_path, observable, time_point, "points3d", "mp4")
+
+"""
+TODO:
+mlab.scalarbar()
+mlab.title(tit)
+mlab.xlabel(lab)
+mlab.ylabel(lab)
+mlab.zlabel(lab)
+mlab.figure(figure=None, bgcolor=None, fgcolor=None, engine=None, size=(400, 350))
+
+
+antialiasing:
+f = mlab.gfc()
+f.scene.render_window.aa_frames = 8
+mlab.draw() # trigger redraw
+
+"""
+
+
+"""
+File to be edited, file name: a.bov:
+
+TIME: 00
+DATA_FILE: xaa
+DATA_SIZE: 32 32 32
+DATA_FORMAT: DOUBLE
+VARIABLE: field
+DATA_ENDIAN: LITTLE
+CENTERING: zonal
+BRICK_ORIGIN: 0. 0. 0.
+BRICK_SIZE: 32. 32. 32.
+"""
+
 
 def main():
 	N_list = [24, 28, 32]
