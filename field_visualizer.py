@@ -40,19 +40,22 @@ def create_animation(frame_folder, animation_folder, observable, time_point, met
 	_ANIM_TYPES = ["gif", "mp4"]
 	assert anim_type in _ANIM_TYPES, "%s is not a recognized animation type." % anim_type
 
-	animation_figure_path = os.path.join(animation_folder, '%s_%s_t%d.%s' % (observable, method, time_point, anim_type))
+	animation_folder_path = os.path.join(animation_folder, '%s_%s_t%d.%s' % (observable, method, time_point, anim_type))
 	if anim_type == "gif":
 		input_paths = os.path.join(frame_folder, '%s_t*.png' % method)
-		cmd = ['convert', '-delay', '1', '-loop', '0', input_paths, animation_figure_path]
+		cmd = ['convert', '-delay', '1', '-loop', '0', input_paths, animation_folder_path]
 	else:
+		frame_rate = 8
+
 		input_paths = os.path.join(frame_folder, '%s_t%%02d.png' % method)
-		cmd = ['ffmpeg', '-framerate', '4', '-i', input_paths, '-y', '-c:v', 'libx264', '-r', '30', animation_figure_path]
+		cmd = ['ffmpeg', '-framerate', '10', '-i', input_paths, '-y', '-c:v', 'libx264', 
+			'-crf', '0', '-preset', 'veryslow', '-r', str(frame_rate), animation_folder_path]
 	
 	proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 	read_out = proc.stdout.read()
 	# print read_out()
 
-	print "%s animation %s created." % (anim_type, animation_figure_path)
+	print "%s animation %s created." % (anim_type, animation_folder_path)
 
 
 class FieldAnimation:
@@ -99,6 +102,13 @@ class FieldAnimation:
 		self.input_folder = os.path.expanduser(self.input_folder)
 		self.output_folder = os.path.expanduser(self.output_folder)
 
+		# Checks that the output folder exists
+		check_folder(self.output_folder, self.dryrun, verbose=self.verbose)
+		self.output_folder = os.path.join(self.output_folder, "field_animations")
+
+		# Checks that the output animation figures folder exist
+		check_folder(self.output_folder, self.dryrun, verbose=self.verbose)
+
 		self._retrieve_field_data()
 
 		# Camera parameters
@@ -111,16 +121,12 @@ class FieldAnimation:
 		# Output of the animation:
 		# {output_folder}/field_animations/{observable}/{animations}
 
-		# Checks that the output folder exists
-		check_folder(self.output_folder, self.dryrun, verbose=self.verbose)
-		self.output_folder = os.path.join(self.output_folder, "field_animations")
-
 		# Creates output folders for storing the animations
-		for key in self.data:
+		for obs in self.data:
 			# Creates folder of where to store the animation
-			obs_folder_path = os.path.join(self.output_folder, key)
+			obs_folder_path = os.path.join(self.output_folder, obs)
 			check_folder(obs_folder_path, self.dryrun, verbose=self.verbose)
-			self.data[key]["animation_folder_path"] = obs_folder_path
+			self.data[obs]["animation_folder_path"] = obs_folder_path
 
 	def _retrieve_field_data(self):
 		"""Function for retrieving fields."""
@@ -128,7 +134,8 @@ class FieldAnimation:
 		# Load the different data of the fields
 		scalar_field_folder = os.path.join(self.input_folder, "scalar_fields")
 
-		assert os.path.isdir(scalar_field_folder), "%s folder not found." % scalar_field_folder
+		assert os.path.isdir(scalar_field_folder), ("%s folder not found." 
+			% scalar_field_folder)
 		
 		# Goes through the observables in the scalar fields folder
 		for obs in os.listdir(scalar_field_folder):
@@ -143,7 +150,15 @@ class FieldAnimation:
 				continue 
 			
 			self.data[obs] = cp.deepcopy(self._get_flow_files(obs_folder))
-			
+
+			# Creates folder of where to store the animation
+			obs_folder_path = os.path.join(self.output_folder, obs)
+			check_folder(obs_folder_path, self.dryrun, verbose=self.verbose)
+			self.data[obs]["animation_folder_path"] = obs_folder_path
+
+			if self.animation_module == "visit":
+				self._create_time_slice_files(self.data[obs], obs)
+
 			# Factors in missing -1.0/64.0
 			if obs == "energy":
 				for t in self.data[obs].keys():
@@ -185,12 +200,12 @@ class FieldAnimation:
 			for iz in xrange(self.N):
 				for iy in xrange(self.N):
 					for ix in xrange(self.N):
-						_field[ix, iy, iz, it] = data_array[self._global_index(ix, iy, iz, it)]
+						_field[ix, iy, iz, it] = data_array[self._index(ix, iy, iz, it)]
 
 		return _field
 
-	def _global_index(self, i, j, k, l):
-		"""Column-major contigious memory locator."""
+	def _index(self, i, j, k, l):
+		"""Global column-major contigious memory locator."""
 		return int(i + self.N*(j + self.N*(k + self.N*l)))
 
 	def _get_cfg_num_from_file(self, fname):
@@ -207,6 +222,38 @@ class FieldAnimation:
 		_flow_time_list = re.findall("config(\d+)", fname)
 		assert len(_flow_time_list) == 1, "error in file name: %s" % fname
 		return int(_flow_time_list[0])
+
+
+	def _create_time_slice_files(self, data_obj, observable):
+		"""Create binary time sliced files."""
+
+		# Temporary binary folder to store splitted binary files in.
+		temp_bin_folder = os.path.join(data_obj["animation_folder_path"], "temp")
+		check_folder(temp_bin_folder, self.dryrun, self.verbose)
+
+		for flow_time in [ft for ft in data_obj if isinstance(ft, int)]:
+
+			# Creates temporary flow time folder
+			temp_flow_time_folder = os.path.join(temp_bin_folder, str(flow_time))
+			check_folder(temp_flow_time_folder, self.dryrun, self.verbose)
+
+			for it in xrange(self.NT):
+
+				f_path = os.path.join(temp_flow_time_folder, "file%03d.splitbin" % it)
+
+				with open(f_path, "wb") as f:
+					f.write(data_obj[flow_time][:,:,:,it].tobytes())
+
+				# if self.verbose:
+				# 	print "Written binary %s to file." % f_path
+
+				# print np.sum(data_obj[flow_time][:,:,:,it])
+				# print np.sum(np.fromfile(f_path))
+				# print np.fromfile(f_path).reshape(self.N, self.N, self.N)
+				# exit(1)
+
+		# exit(1)
+
 
 	def _remove_folder_tree(self, folder):
 		"""Deletes folder and its files."""
@@ -332,7 +379,8 @@ class FieldAnimation:
 
 
 	def _plot_iso_surface(self, F, n_time_points, observable, time_point,
-		file_type="png", vmin=None, vmax=None, cgif=True, cmovie=True):
+		file_type="png", vmin=None, vmax=None, cgif=True, cmovie=True,
+		n_contours=15, camera_distance=1.0):
 		"""
 		Function for plotting iso surfaces.
 
@@ -346,44 +394,54 @@ class FieldAnimation:
 			vmax: float upper cutoff value of the field. Default is None.
 			cgif: bool if we are to create a gif.
 			cmovie: bool if we are to create a movie.
+			n_contours: optional integer argument for number of contours.
 		"""
 
 		if observable == "energy":
-			contour_list = np.logspace(np.log(vmin), np.log(vmax), 10).tolist()
+			contour_list = np.logspace(np.log(vmin), np.log(vmax), n_contours)
 		else:
-			contour_list = np.linspace(vmin, vmax, 20).tolist()
+			contour_list = np.linspace(vmin, vmax, n_contours)
+		# contour_list = np.linspace(vmin, vmax, n_contours)
 
-		mlab.figure(size=self._FIG_SIZE)
+		contour_list = contour_list.tolist()
+
+		f = mlab.figure(size=self._FIG_SIZE, bgcolor=(0.8, 0.8, 0.8), fgcolor=(1, 1, 1))
+		
+		f.scene.render_window.point_smoothing = True
+		f.scene.render_window.line_smoothing = True
+		f.scene.render_window.polygon_smoothing = True
+		f.scene.render_window.multi_samples = 8 # Try with 4 if you think this is slow
+
 
 		for it in xrange(n_time_points):
-			mlab.clf(fig)
+			mlab.clf()
 			fpath = os.path.join(self.frame_folder, "iso_surface_t%02d.%s" % (it, file_type))
 			source = mlab.pipeline.scalar_field(F[:,:,:,it])
-			
+
 			mlab.pipeline.iso_surface(source, vmin=vmin, vmax=vmax, 
-				contours=contour_list, reset_zoom=False)
+				contours=contour_list, reset_zoom=False, opacity=0.8)
 
-			# Fixes the camera
-			if not self.cam_retrieved:
-				self.view = mlab.view()
-				self.cam_retrieved = True
-			else:
-				mlab.view(*self.view)
+			mlab.view(45, 70, distance=np.sqrt(self.N**3)*camera_distance,
+					focalpoint=(self.N/2.0, self.N/2.0, self.N/2.0))
 
-			mlab.scalarbar()
-			mlab.title(self._PLOT_PARAMETERS["title"][observable] + ", t=%2d" % (it + 1))
+			mlab.scalarbar(title=" ")
+			mlab.title(self._PLOT_PARAMETERS["title"][observable] + ", t=%2d" % (it + 1), size=0.4, height=0.94)
 			mlab.xlabel(self._PLOT_PARAMETERS["xlabel"])
 			mlab.ylabel(self._PLOT_PARAMETERS["ylabel"])
 			mlab.zlabel(self._PLOT_PARAMETERS["zlabel"])
 
 			mlab.savefig(fpath)
 			print "file created at %s" % fpath
+
 		mlab.close()
 
 		if cgif:
-			create_animation(self.frame_folder, self.time_slice_folder_path, observable, time_point, "iso_surface", "gif")
+			create_animation(self.frame_folder, self.time_slice_folder_path,
+				observable, time_point, "iso_surface", "gif")
 		if cmovie:
-			create_animation(self.frame_folder, self.time_slice_folder_path, observable, time_point, "iso_surface", "mp4")
+			create_animation(self.frame_folder, self.time_slice_folder_path,
+				observable, time_point, "iso_surface", "mp4")
+
 
 	def _plot_scalar_field(self, F, n_time_points, observable, time_point, 
 		file_type="png", vmin=None, vmax=None, cgif=True, cmovie=True):
@@ -407,10 +465,10 @@ class FieldAnimation:
 
 		for it in xrange(n_time_points):
 			fpath = os.path.join(self.frame_folder, "volume_t%02d.%s" % (it, file_type))
+			
 			mlab.clf()
-
-			mlab.scalarbar()
-			mlab.title(self._PLOT_PARAMETERS["title"][observable] + ", t=%d" % it)
+			mlab.scalarbar(title="")
+			mlab.title(self._PLOT_PARAMETERS["title"][observable] + ", t=%d" % it, size=0.4, height=0.94)
 			mlab.xlabel(self._PLOT_PARAMETERS["xlabel"])
 			mlab.ylabel(self._PLOT_PARAMETERS["ylabel"])
 			mlab.zlabel(self._PLOT_PARAMETERS["zlabel"])
@@ -431,9 +489,12 @@ class FieldAnimation:
 		mlab.close()
 
 		if cgif:
-			create_animation(self.frame_folder, self.time_slice_folder_path, observable, time_point, "volume", "gif")
+			create_animation(self.frame_folder, self.time_slice_folder_path, 
+				observable, time_point, "volume", "gif")
 		if cmovie:
-			create_animation(self.frame_folder, self.time_slice_folder_path, observable, time_point, "volume", "mp4")
+			create_animation(self.frame_folder, self.time_slice_folder_path, 
+				observable, time_point, "volume", "mp4")
+
 
 	def _plot_points3d(self, F, n_time_points, observable, time_point, 
 		file_type="png", vmin=None, vmax=None, cgif=True, cmovie=True, 
@@ -467,8 +528,8 @@ class FieldAnimation:
 			mlab.clf()
 			fpath = os.path.join(self.frame_folder, "points3d_t%02d.%s" % (it, file_type))
 
-			mlab.scalarbar()
-			mlab.title(self._PLOT_PARAMETERS["title"][observable] + ", t=%d" % it)
+			mlab.scalarbar(title="")
+			mlab.title(self._PLOT_PARAMETERS["title"][observable] + ", t=%d" % it, size=0.4, height=0.94)
 			mlab.xlabel(self._PLOT_PARAMETERS["xlabel"])
 			mlab.ylabel(self._PLOT_PARAMETERS["ylabel"])
 			mlab.zlabel(self._PLOT_PARAMETERS["zlabel"])
@@ -495,14 +556,9 @@ class FieldAnimation:
 		if cmovie:
 			create_animation(self.frame_folder, self.time_slice_folder_path, observable, time_point, "points3d", "mp4")
 
+
 """
 TODO:
-mlab.scalarbar()
-mlab.title(tit)
-mlab.xlabel(lab)
-mlab.ylabel(lab)
-mlab.zlabel(lab)
-mlab.figure(figure=None, bgcolor=None, fgcolor=None, engine=None, size=(400, 350))
 
 antialiasing:
 f = mlab.gfc()
@@ -517,6 +573,12 @@ def main():
 	observable_list = ["energy", "topc"]
 	data_set_list = ["prodRunBeta6_0", "prodRunBeta6_1", "prodRunBeta6_2"]
 
+	animation_method = "mayavi"
+
+	# N_list = [4]
+	# NT_list = [8]
+	# data_set_list = ["lattice_field_density4x8"]
+
 	base_path_mac = "/Users/hansmathiasmamenvege/Programming/FYSSP100/GluonAction"
 	input_folder_list = [os.path.join(base_path_mac, "output", f) for f in data_set_list]
 	output_folder_list = [os.path.join(base_path_mac, "figures", f) for f in data_set_list]
@@ -524,12 +586,12 @@ def main():
 	verbose = True
 	dryrun = False
 
+	# Command for plotting with visit
+	# /Applications/VisIt.app/Contents/Resources/bin/visit -cli -no-win -s visitPlot.py
+
 	for N, NT, input_folder, output_folder in zip(N_list, NT_list, input_folder_list, output_folder_list):
 
-		if N == 24: continue
-		if N == 32: continue
-
-		FieldAnimationObj = FieldAnimation(input_folder, output_folder, N, NT, "mayavi", verbose=verbose, dryrun=dryrun)
+		FieldAnimationObj = FieldAnimation(input_folder, output_folder, N, NT, animation_method, verbose=verbose, dryrun=dryrun)
 
 		for observable in observable_list:
 			# FieldAnimationObj.animate(observable, "euclidean", 0)
@@ -538,13 +600,13 @@ def main():
 			# FieldAnimationObj.animate(observable, "euclidean", 200)
 			FieldAnimationObj.animate(observable, "euclidean", 400)
 			# FieldAnimationObj.animate(observable, "euclidean", 800)
-			# FieldAnimationObj.animate(observable, "euclidean", 999)
+			# FieldAnimationObj.animate(observable, "euclidean", 1000)
 			# FieldAnimationObj.animate(observable, "flow", 0)
 			# FieldAnimationObj.animate(observable, "flow", 7)
 			# FieldAnimationObj.animate(observable, "flow", 0, mayavi_plot_type="volume")
 			# FieldAnimationObj.animate(observable, "flow", 7, mayavi_plot_type="volume")
 
-			break
+		exit("Done temporarely @ ~600")
 
 	print "\n\nDone"
 

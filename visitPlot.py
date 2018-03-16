@@ -1,8 +1,14 @@
+#
 #!/Users/hansmathiasmamenvege/Programming/visit/python/2.7.11/i386-apple-darwin16_clang/bin/python
 
 import os
+import subprocess
 import numpy as np
+
 # import mayavi
+
+# from colour import Color
+
 
 def initVisit(visitPyPath, visitBinPath):
     '''
@@ -25,7 +31,7 @@ def initVisit(visitPyPath, visitBinPath):
     visit.Launch(vdir=visitBinPath)
 
 
-def makeVideoAndGif(folder, outFileName):
+def makeVideoAndGif(folder, outFileName, avi=True, gif=True):
     '''
     Function makeVideoAndGif:
     uses ffmpeg and imagemagic to create a .mp4 and a .gif file out of the 
@@ -34,13 +40,23 @@ def makeVideoAndGif(folder, outFileName):
     Parameters:
     folder      (string) -> the path of the folder containing the frames
     outFileName (string) -> the name of the output file
+    avi         (bool)   -> bool to set the avi output default=True
+    gif         (bool)   -> bool to set the gif output default=True
     '''
+    
     # Create mp4 file
-    os.system("ffmpeg -r 1 -i " + folder + "/%02d.png -vcodec mpeg4 -r 10 -y " + outFileName)
+    if avi:
+        cmd = ["ffmpeg", "-r", "8", "-i", folder + "temp/%03d.png", 
+                        "-qscale:v", "0", "-r", "8", "-y", outFileName + ".avi"]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        read_out = proc.stdout.read()
     
     # Create gif file
-    # some command...
-
+    if gif:
+        cmd = ["convert", "-delay", "10", "-loop", "0", 
+                        folder + "temp/*.png", outFileName +".gif"]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        read_out = proc.stdout.read()
 
 def closeVisit():    
     '''
@@ -50,16 +66,35 @@ def closeVisit():
     visit.CloseComputeEngine()
 
 
-def makeFrame(fileName, observable, outputFile, minVal, maxVal):
+def makeFrame(fileName, observable, outputFile, minVal, maxVal, 
+              NContours=15, plotTitle=None, pixelSize=640,
+              transparency=50):
+    '''
+    Function makeFrame:
+    creates a frame given a sub-block of the lattice. Uses Visit to set view, 
+    colorscheme and saves the frame in the temp folder.
 
+    Parameters:
+    fileName    (string) -> path to the sub-block .bov file
+    outputFile  (string) -> the name of the output .png file
+    observable  (string) -> either "energy" or "topc", used to set the scale 
+                            and the title
+    minVal      (float)  -> the minimum value of the scale to use
+    maxVal      (float)  -> the maximum value of the scale to use
+    NContours   (int)    -> the number of contour surfaces to draw default=15
+    plotTitle   (string) -> title for the plot default is observable name
+    pixelSize   (int)    -> size of the output image in pixels, default=640
+    transparency(int)    -> alpha channel integer, from 0 to 255. default=50
+    '''
     # Open DataFile
     visit.OpenDatabase(fileName)
     
     # Set Plot Title
-    if observable == "energy":
-        plotTitle = "Energy Density"
-    elif observable == "topc":
-        plotTitle = "Topological Charge"
+    if not plotTitle:
+        if observable == "energy":
+            plotTitle = "Energy Density"
+        elif observable == "topc":
+            plotTitle = "Topological Charge"
     
 
     # Draw Contour Plot
@@ -78,11 +113,11 @@ def makeFrame(fileName, observable, outputFile, minVal, maxVal):
     p.max = maxVal
     p.minFlag = 1
     p.maxFlag = 1
-    p.contourNLevels = 15
+    p.contourNLevels = NContours
     
     # Define Color Scheme ? perhaps manually to get transparency?
-    p.colorType = 2
-    p.colorTableName = "hot"
+    #colourPalette(p, p.contourNLevels, transparency=transparency)
+    #p.colorType = 1
     visit.SetPlotOptions(p)
 
     # Title
@@ -95,7 +130,7 @@ def makeFrame(fileName, observable, outputFile, minVal, maxVal):
     s = visit.SaveWindowAttributes()
     s.format = s.PNG
     s.outputDirectory = ""
-    s.width, s.height = (640,640)
+    s.width, s.height = (pixelSize,pixelSize)
     s.resConstraint = s.EqualWidthHeight
     s.screenCapture = 0
     s.family = 0
@@ -111,7 +146,7 @@ def makeFrame(fileName, observable, outputFile, minVal, maxVal):
     v.nearPlane = -34.641
     v.farPlane = 34.641
     v.perspective = 1
-    visit.SetView3D(v) # Set the view
+    visit.SetView3D(v) 
 
     # Set Background
     a = visit.AnnotationAttributes()
@@ -131,23 +166,146 @@ def makeFrame(fileName, observable, outputFile, minVal, maxVal):
     visit.DeleteAllPlots()
     visit.CloseDatabase(fileName)
 
+
+def colourPalette(attributes, N, transparency=50):
+    '''
+    Function colourPalette:
+    given a visit.ContourAttributes object, creates a default multi color 
+    rainbow palette with transparency.
+
+    Parameters:
+    attributes   (ContourAttributes) -> the visit attribute object
+    N            (int) -> the number of contours plotted
+    transparency (int) -> integer fot the alpha channel
+    '''
+    red = Color("cyan")
+    colors = list(red.range_to(Color("red"),N))
+    for i, color in enumerate(colors):
+        colorTuple = [int(j * 255) for j in color.rgb]
+        colorTuple.append(transparency)
+        attributes.SetMultiColor(i, tuple(colorTuple))
+
+def splitFile(folder, inputConf, size):
+    '''
+    Function splitFile:
+    given a .bin file, splits it into 2*size sub-blocks and creates .bov
+    metadata in a temporary folder. Returns the list of generated .bov files.
+    
+    Parameters:
+    folder    (string) -> the path of the configuration (will be the path of
+                          the temp folder as well)
+    inputConf (string) -> the name of the .bin file
+    size      (int)    -> the number of points per spatial dimension
+
+    Returns:
+    file  (list[string]) -> the list of .bov files
+    '''
+
+    # Create the temp folder 
+    cmd = ['mkdir', '-p', folder + "temp"]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    read_out = proc.stdout.read()
+    
+    # Split the file into 2*size chunks
+    cmd = ['split', "--bytes="+str(size**3 * 8), "-d", "-a", "3", "--additional-suffix=.splitbin", folder+inputConf, folder+"temp/file"]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    read_out = proc.stdout.read()
+
+    # Generate .bov files
+    files = []
+    for i in xrange(2*size):
+        with open(folder+"temp/"+str(i).zfill(3)+".bov", 'w') as f:
+            f.write("TIME: "+str(i)+"\n\
+DATA_FILE: file" + str(i).zfill(3)+ ".splitbin \n\
+DATA_SIZE: " + str(size) + " " + str(size) + " " + str(size) + "\n\
+DATA_FORMAT: DOUBLE \n\
+VARIABLE: field \n\
+DATA_ENDIAN: LITTLE \n\
+CENTERING: zonal \n\
+BRICK_ORIGIN: 0. 0. 0. \n\
+BRICK_SIZE: " + str(size) + ". " + str(size) + ". " + str(size) + ".")
+
+        # Append to .bov file list
+        file = folder+"temp/" + str(i).zfill(3) + ".bov"
+        files.append(file)
+    return files 
+
+
+def plotConf(folder, inputConf, size, observable, outpuFileName, 
+             minVal, maxVal, NContours=15, pixelSize=640, transparency=50,
+             avi=True, gif=True, cleanUp=True, plotTitle=None):
+    '''
+    Function plotConf:
+    given a folder and a configuration file, generates the frames, a gif and
+    and avi file.
+
+    Parameters:
+    folder    (string) -> the path of the configuration (will be the path of
+                          the temp folder as well)
+    inputConf (string) -> the name of the .bin file
+    size      (int)    -> the number of points per spatial dimension
+    observable(string) -> either "energy" or "topc", used to set the scale 
+                          and the title of the frame
+    outpuFileName (string) -> the name of the .avi and .gif files
+    minVal      (float)  -> the minimum value of the scale to use
+    maxVal      (float)  -> the maximum value of the scale to use
+    avi       (bool)   -> bool to set the avi output default=True
+    gif       (bool)   -> bool to set the gif output default=True
+    cleanUp   (bool)   -> bool to set the deletion of the temp folder, 
+                          containing frames and sub-blocks default=True
+    NContours   (int)    -> the number of contour surfaces to draw default=15
+    plotTitle   (string) -> title for the plot default is observable name
+    pixelSize   (int)    -> size of the output image in pixels, default=640
+    transparency(int)    -> alpha channel integer, from 0 to 255. default=50
+    '''    
+
+    # Split file into sub-blocks
+    files = splitFile(folder, inputConf, size)
+
+    # Plot Frames
+    for i, file in enumerate(files):
+        makeFrame(file,"energy", folder + "temp/" + str(i).zfill(3), 
+            minVal, maxVal, NContours=NContours, plotTitle=plotTitle,
+            pixelSize=pixelSize, transparency=transparency)
+
+    # Make Video
+    if avi or gif:
+        makeVideoAndGif(folder, folder + outpuFileName, avi=avi, gif=gif)
+    
+    # Clean up
+    if cleanUp:
+        os.system("rm -r " + folder + "temp")
+
+
 if __name__ == "__main__":
+    
     # Initialize Visit
     visitBinPath = "/home/giovanni/Desktop/visit2_13_0.linux-x86_64/bin"
     visitPyPath = "/home/giovanni/Desktop/visit2_13_0.linux-x86_64/2.13.0/linux-x86_64/lib/site-packages"
-    
-    visitBinPath = "/Users/hansmathiasmamenvege/Programming/visit2.13.0/src/bin"
-    visitPyPath = "/Users/hansmathiasmamenvege/Programming/visit2.13.0/src/lib/site-packages/" 
+
+    # visitBinPath = "/Users/hansmathiasmamenvege/Programming/visit2.13.0/src/bin"
+    # visitPyPath = "/Users/hansmathiasmamenvege/Programming/visit2.13.0/src/lib/site-packages" 
+    visitBinPath = "/Applications/VisIt.app/Contents/Resources/bin"
+    visitPyPath = "/Applications/VisIt.app/Contents/Resources/2.13.0/darwin-x86_64/lib/site-packages"
     initVisit(visitPyPath, visitBinPath)
 
-    # Plot Frames
-    makeFrame("00.bov","energy", "00", 0.01, 0.1)
-    makeFrame("01.bov","energy","01", 0.01, 0.1)
-    makeFrame("02.bov","energy","02", 0.01, 0.1)
-    makeFrame("03.bov","energy","03", 0.01, 0.1)
+    # Plot
+    plotConf(os.path.abspath("input")+"/", # path fo .bin folder
+             "field_density_b62_b6.200000_N32_NT64_np512_config00000.bin",       # .bin file
+             32,                # size of lattice
+             "energy",          # observable type
+             "field",           # outputfile name
+             0.01,              # min value of the scale
+             0.1,               # max value of the scale
+             NContours=15,      # number of contours
+             pixelSize=640,     # image size in pixels
+             transparency=50,   # alpha channel (0-255)
+             avi=True,          # avi output
+             gif=True,          # gif output
+             cleanUp=True,      # delete temp files (frames and blocks)
+             plotTitle=None     # title (default is observable)
+             )
 
-    # Close Visit
-    closeVisit()
+    # Close Visit and Delete temp files
+    # closeVisit()
 
-    # Make Video
-    makeVideoAndGif(".", "a.mp4")
