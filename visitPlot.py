@@ -1,5 +1,8 @@
+#!/Users/hansmathiasmamenvege/Programming/visit/python/2.7.11/i386-apple-darwin16_clang/bin/python
+
 import os
 import numpy as np
+# import mayavi
 
 def initVisit(visitPyPath, visitBinPath):
     '''
@@ -14,7 +17,7 @@ def initVisit(visitPyPath, visitBinPath):
     '''
     # Import Packages
     import sys
-    sys.path.append(visitPyPath)
+    sys.path.insert(0,visitPyPath)
     global visit
     import visit
 
@@ -132,6 +135,9 @@ if __name__ == "__main__":
     # Initialize Visit
     visitBinPath = "/home/giovanni/Desktop/visit2_13_0.linux-x86_64/bin"
     visitPyPath = "/home/giovanni/Desktop/visit2_13_0.linux-x86_64/2.13.0/linux-x86_64/lib/site-packages"
+    
+    visitBinPath = "/Users/hansmathiasmamenvege/Programming/visit2.13.0/src/bin"
+    visitPyPath = "/Users/hansmathiasmamenvege/Programming/visit2.13.0/src/lib/site-packages/" 
     initVisit(visitPyPath, visitBinPath)
 
     # Plot Frames
