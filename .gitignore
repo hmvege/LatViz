@@ -12,3 +12,6 @@ input/
 
 # Picture files
 *.png
+
+# Python binaries
+*.pyc
