@@ -267,7 +267,7 @@ class FieldAnimation:
 			print ">rmdir %s" % folder
 
 
-	def animate(self, observable, time_type, time_slice, mayavi_plot_type="iso_surface", figure_size=(640, 640), **kwargs):
+	def animate(self, observable, time_type, time_slice, mayavi_plot_type="iso_surface", figure_size=(640, 640), cgif=True, cmovie=True):
 		"""
 		Method for animating in flow time or euclidean time.
 
@@ -281,7 +281,8 @@ class FieldAnimation:
 				'iso_surface', 'points3d' and 'volume'.
 			figure_size: tuple of the figure size to be plotted. Default is
 				640x640.
-			**kwargs passed to the animation function.
+			cgif: bool, create gif.
+			cmovie: bool, create avi movie.
 
 		Raises:
 			IndexError: if the selected time slice is out of bounds.
@@ -369,12 +370,12 @@ class FieldAnimation:
 				raise KeyError("Plot type %s not recognized" % mayavi_plot_type)
 
 			if cgif:
-				create_animation(frame_folder, output_animation_folder, observable,
-					time_point, mayavi_plot_type, "gif")
+				create_animation(self.frame_folder, self.time_slice_folder,
+					observable, time_slice, mayavi_plot_type, "gif")
 
 			if cmovie:
-				create_animation(frame_folder, output_animation_folder, observable,
-					time_point, mayavi_plot_type, "avi")
+				create_animation(self.frame_folder, self.time_slice_folder, 
+					observable, time_slice, mayavi_plot_type, "avi")
 
 		elif self.animation_module == "visit":
 			raise NotImplementedError("Visit module not implemented yet.")
