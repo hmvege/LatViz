@@ -55,6 +55,61 @@ BRICK_SIZE: " + str(size) + ". " + str(size) + ". " + str(size) + ".")
         files.append(file)
     return files 
 
+
+def getSlice(folder, size, euclideanTime=0):
+    '''
+    Function getSlice:
+    given a set of.bin file, reads one euclidean time from each and creates
+    the required metadata. Returns the list of generated .bov files.
+    
+    Parameters:
+    folder    (string) -> the path of the configuration (will be the path of
+                          the temp folder as well)
+    size      (int)    -> the number of points per spatial dimension
+    euclideanTime (int)-> the euclidean time slice to extract, defautl=0
+
+    Returns:
+    file  (list[string]) -> the list of .bov files
+    '''
+
+    # Create the temp folder 
+    cmd = ['mkdir', '-p', folder + "temp"]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    read_out = proc.stdout.read()
+    
+    inputList = sorted(os.listdir(folder))
+    blockSize = size**3*8
+    blockNum = 0
+    
+    for file in inputList:
+        if file.endswith(".bin"):
+            with open(folder + file, "r") as fp:
+                print folder + file
+                block = fp.read(blockSize)
+                with open(folder + "temp/file" + str(blockNum).zfill(3) + \
+                          ".splitbin", "w") as out:
+                    out.write(block)
+                    blockNum += 1
+                
+    # Generate .bov files
+    files = []
+    for i in xrange(blockNum):
+        with open(folder+"temp/"+str(i).zfill(3)+".bov", 'w') as f:
+            f.write("TIME: "+str(i)+"\n\
+DATA_FILE: file" + str(i).zfill(3)+ ".splitbin \n\
+DATA_SIZE: " + str(size) + " " + str(size) + " " + str(size) + "\n\
+DATA_FORMAT: DOUBLE \n\
+VARIABLE: field \n\
+DATA_ENDIAN: LITTLE \n\
+CENTERING: zonal \n\
+BRICK_ORIGIN: 0. 0. 0. \n\
+BRICK_SIZE: " + str(size) + ". " + str(size) + ". " + str(size) + ".")
+
+        # Append to .bov file list
+        file = folder+"temp/" + str(i).zfill(3) + ".bov"
+        files.append(file)
+    return files 
+
 def colourPalette(N, transparency=50):
     '''
     Function colourPalette:
@@ -74,7 +129,7 @@ def colourPalette(N, transparency=50):
         palette.append(colorTuple)
     return palette
 
-def plotVisit(folder, inputConf, size, observable, outpuFileName, 
+def plotVisit(folder, typePlot, size, observable,
              minVal, maxVal, NContours=15, pixelSize=640, transparency=50,
              avi=True, gif=True, cleanUp=True, plotTitle=None):
     '''
@@ -104,9 +159,6 @@ def plotVisit(folder, inputConf, size, observable, outpuFileName,
     # Create Parameters Dictionary
     parameters = {}
 
-    # Split the file into sub-blocks
-    parameters["files"] = splitFile(folder, inputConf, size)
-
     # Pass other parameters
     parameters["folder"] = folder
     parameters["size"] = size
@@ -119,13 +171,25 @@ def plotVisit(folder, inputConf, size, observable, outpuFileName,
     parameters["gif"] = gif
     parameters["plotTitle"] = plotTitle
     parameters["palette"] = colourPalette(NContours, transparency=transparency)
-    parameters["outputFile"] = outpuFileName
 
+    # Split the file into sub-blocks
+    if typePlot == "euclidean":
+        inputList = sorted(os.listdir(folder))
+        for file in inputList:
+            if file.endswith(".bin"):       
+                parameters["files"] = splitFile(folder, file, size)
+                parameters["outputFile"] = file[:-4]
+                pushToVisit(parameters, folder, cleanUp)
+    elif typePlot == "flow":
+        parameters["files"] = getSlice(folder, size)
+        parameters["outputFile"] = "flowTime"
+        pushToVisit(parameters, folder, cleanUp)
+
+
+def pushToVisit(parameters, folder, cleanUp=True):
     with open(folder+ "temp/params.json", "w") as jsonParams:
         json.dump(parameters, jsonParams)
-
     os.system(visitBin + " -cli -no-win -s visitPlot.py " + folder+ "temp/params.json")
-    
     # Clean up
     if cleanUp:
         os.system("rm -r " + folder + "temp")
@@ -133,17 +197,16 @@ def plotVisit(folder, inputConf, size, observable, outpuFileName,
 if __name__ == "__main__":
     
     params = plotVisit(os.path.abspath("a/b/")+"/", # path fo .bin folder
-                "field.bin",       # .bin file
+                "flow",       # .bin file
                 32,                # size of lattice
                 "energy",          # observable type
-                "field",           # outputfile name
                 0.01,              # min value of the scale
                 0.1,               # max value of the scale
                 NContours=15,      # number of contours
                 pixelSize=640,     # image size in pixels
-                transparency=250,   # alpha channel (0-255)
+                transparency=50,   # alpha channel (0-255)
                 avi=True,          # avi output
                 gif=True,          # gif output
-                cleanUp=False,      # delete temp files (frames and blocks)
+                cleanUp=True,      # delete temp files (frames and blocks)
                 plotTitle=None     # title (default is the observable)
              )
