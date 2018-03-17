@@ -182,7 +182,7 @@ def plotVisit(folder, typePlot, size, observable,
                 pushToVisit(parameters, folder, cleanUp)
     elif typePlot == "flow":
         parameters["files"] = getSlice(folder, size)
-        parameters["outputFile"] = folder + "flowTime"
+        parameters["outputFile"] = "flowTime"
         pushToVisit(parameters, folder, cleanUp)
 
 
@@ -197,7 +197,7 @@ def pushToVisit(parameters, folder, cleanUp=True):
 if __name__ == "__main__":
     
     params = plotVisit(os.path.abspath("a/b/")+"/", # path fo .bin folder
-                "euclidean",       # .bin file
+                "flow",       # .bin file
                 32,                # size of lattice
                 "energy",          # observable type
                 0.01,              # min value of the scale
@@ -207,6 +207,6 @@ if __name__ == "__main__":
                 transparency=50,   # alpha channel (0-255)
                 avi=True,          # avi output
                 gif=True,          # gif output
-                cleanUp=False,      # delete temp files (frames and blocks)
+                cleanUp=True,      # delete temp files (frames and blocks)
                 plotTitle=None     # title (default is the observable)
              )
