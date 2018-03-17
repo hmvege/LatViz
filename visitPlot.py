@@ -173,7 +173,7 @@ if __name__ == "__main__":
 
     # Plot
     plotConf(params["folder"],       # path fo .bin folder
-             params["files"],      # .bin file
+             params["files"],        # the .bov file
              params["size"],         # size of lattice
              params["observable"],   # observable type
              params["outputFile"],   # outputfile name
