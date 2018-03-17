@@ -37,10 +37,9 @@ def create_animation(frame_folder, animation_folder, observable, time_point, met
 		AssertionError: if anim_type is not recognized.
 	"""
 
-	_ANIM_TYPES = ["gif", "mp4"]
-	assert anim_type in _ANIM_TYPES, "%s is not a recognized animation type." % anim_type
+	assert anim_type in ["gif", "movie"], "%s is not a recognized animation type." % anim_type
 
-	animation_folder_path = os.path.join(animation_folder, '%s_%s_t%d.%s' % (observable, method, time_point, anim_type))
+	animation_folder_path = os.path.join(animation_folder, '%s_%s_t%d.%s' % (observable, method, time_point, "avi"))
 	if anim_type == "gif":
 		input_paths = os.path.join(frame_folder, '%s_t*.png' % method)
 		cmd = ['convert', '-delay', '1', '-loop', '0', input_paths, animation_folder_path]
@@ -48,8 +47,8 @@ def create_animation(frame_folder, animation_folder, observable, time_point, met
 		frame_rate = 8
 
 		input_paths = os.path.join(frame_folder, '%s_t%%02d.png' % method)
-		cmd = ['ffmpeg', '-framerate', '10', '-i', input_paths, '-y', '-c:v', 'libx264', 
-			'-crf', '0', '-preset', 'veryslow', '-r', str(frame_rate), animation_folder_path]
+		cmd = ['ffmpeg', '-framerate', '10', '-i', input_paths, '-y',
+			'-qscale', '0', '-r', str(frame_rate), animation_folder_path]
 	
 	proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 	read_out = proc.stdout.read()
@@ -360,8 +359,13 @@ class FieldAnimation:
 
 		if self.animation_module == "mayavi":
 			if mayavi_plot_type == "iso_surface":
+				if observable == "topc":
+					n_contours = 30
+				else:
+					n_contours = 15
+
 				self._plot_iso_surface(field_data, n_time_slices, observable, time_slice,
-					vmin=min_val, vmax=max_val, **kwargs)
+					vmin=min_val, vmax=max_val, n_contours=n_contours, **kwargs)
 			elif mayavi_plot_type == "volume":
 				self._plot_scalar_field(field_data, n_time_slices, observable, time_slice,
 					vmin=min_val, vmax=max_val, **kwargs)
@@ -377,6 +381,8 @@ class FieldAnimation:
 
 		self._remove_folder_tree(self.frame_folder)
 
+	def _launch_visit(self, ):
+		pass
 
 	def _plot_iso_surface(self, F, n_time_points, observable, time_point,
 		file_type="png", vmin=None, vmax=None, cgif=True, cmovie=True,
@@ -412,7 +418,6 @@ class FieldAnimation:
 		f.scene.render_window.polygon_smoothing = True
 		f.scene.render_window.multi_samples = 8 # Try with 4 if you think this is slow
 
-
 		for it in xrange(n_time_points):
 			mlab.clf()
 			fpath = os.path.join(self.frame_folder, "iso_surface_t%02d.%s" % (it, file_type))
@@ -440,7 +445,7 @@ class FieldAnimation:
 				observable, time_point, "iso_surface", "gif")
 		if cmovie:
 			create_animation(self.frame_folder, self.time_slice_folder_path,
-				observable, time_point, "iso_surface", "mp4")
+				observable, time_point, "iso_surface", "movie")
 
 
 	def _plot_scalar_field(self, F, n_time_points, observable, time_point, 
