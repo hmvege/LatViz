@@ -1,14 +1,15 @@
 # OS X junk
 .DS_Store
+.vscode/*
 
 # Visit log
 visitlog.py
 
 # Temporary folders
-a/
+a/*
 
 # Input folders
-input/
+input/*
 
 # Picture files
 *.png
