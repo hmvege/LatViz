@@ -1,0 +1,14 @@
+# OS X junk
+.DS_Store
+
+# Visit log
+visitlog.py
+
+# Temporary folders
+a/
+
+# Input folders
+input/
+
+# Picture files
+*.png

@@ -129,7 +129,6 @@ def makeFrame(fileName, observable, outputFile, minVal, maxVal, colors,
     visit.DeleteAllPlots()
     visit.CloseDatabase(fileName)
 
-
 def plotConf(folder, files, size, observable, outpuFileName, 
              minVal, maxVal, colors, NContours=15, pixelSize=640, 
              avi=True, gif=True, plotTitle=None):
@@ -165,9 +164,7 @@ def plotConf(folder, files, size, observable, outpuFileName,
         makeVideoAndGif(folder, folder + outpuFileName, avi=avi, gif=gif)
     
 
-
 if __name__ == "__main__":
-    
     with open(sys.argv[1], "r") as jsonParams:
         params = json.load(jsonParams)
 
@@ -188,4 +185,3 @@ if __name__ == "__main__":
             )
 
     exit()
-
