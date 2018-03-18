@@ -4,6 +4,7 @@ import subprocess
 from colour import Color
 
 visitBin = "/home/giovanni/Desktop/visit2_13_0.linux-x86_64/bin/visit"
+visitBin = "/Applications/VisIt.app/Contents/Resources/bin/visit"
 
 
 def splitFile(folder, inputConf, size):
@@ -66,7 +67,7 @@ def getSlice(folder, size, euclideanTime=0):
     folder    (string) -> the path of the configuration (will be the path of
                           the temp folder as well)
     size      (int)    -> the number of points per spatial dimension
-    euclideanTime (int)-> the euclidean time slice to extract, defautl=0
+    euclideanTime (int)-> the euclidean time slice to extract, default=0
 
     Returns:
     file  (list[string]) -> the list of .bov files
@@ -84,7 +85,7 @@ def getSlice(folder, size, euclideanTime=0):
     for file in inputList:
         if file.endswith(".bin"):
             with open(folder + file, "r") as fp:
-                print folder + file
+                # print folder + file
                 block = fp.read(blockSize)
                 with open(folder + "temp/file" + str(blockNum).zfill(3) + \
                           ".splitbin", "w") as out:
@@ -187,7 +188,9 @@ def plotVisit(folder, typePlot, size, observable,
 
 
 def pushToVisit(parameters, folder, cleanUp=True):
-    with open(folder+ "temp/params.json", "w") as jsonParams:
+    fpath = os.path.join(folder, "temp", "params.json")
+    # print folder+ "temp/params.json"
+    with open(fpath, "w") as jsonParams:
         json.dump(parameters, jsonParams)
     os.system(visitBin + " -cli -no-win -s visitPlot.py " + folder+ "temp/params.json")
     # Clean up
@@ -196,9 +199,12 @@ def pushToVisit(parameters, folder, cleanUp=True):
 
 if __name__ == "__main__":
     
-    params = plotVisit(os.path.abspath("a/b/")+"/", # path fo .bin folder
-                "flow",       # .bin file
-                32,                # size of lattice
+    bin_folder = os.path.abspath("a/b/")+"/"
+    # bin_folder = "/Users/hansmathiasmamenvege/Programming/FYSSP100/GluonAction/output/prodRunBeta6_1/scalar_fields/topc/"
+
+    params = plotVisit(bin_folder, # path fo .bin folder
+                "euclidean",       # .bin file
+                28,                # size of lattice
                 "energy",          # observable type
                 0.01,              # min value of the scale
                 0.1,               # max value of the scale
