@@ -7,6 +7,7 @@ visitlog.py
 
 # Temporary folders
 a/*
+c/*
 
 # Input folders
 input/*

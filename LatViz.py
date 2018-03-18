@@ -196,13 +196,13 @@ def pushToVisit(parameters, folder, cleanUp=True):
 
 if __name__ == "__main__":
     
-    params = plotVisit(os.path.abspath("a/b/")+"/", # path fo .bin folder
-                "flow",       # .bin file
-                32,                # size of lattice
-                "energy",          # observable type
-                0.01,              # min value of the scale
-                0.1,               # max value of the scale
-                NContours=15,      # number of contours
+    params = plotVisit(os.path.abspath("c/d/")+"/", # path fo .bin folder
+                "euclidean",            # .bin file
+                28,                # size of lattice
+                "topc",            # observable type
+                -0.005,               # min value of the scale
+                0.005, # max value of the scale
+                NContours=50,      # number of contours
                 pixelSize=640,     # image size in pixels
                 transparency=50,   # alpha channel (0-255)
                 avi=True,          # avi output
