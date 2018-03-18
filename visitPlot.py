@@ -69,6 +69,7 @@ def makeFrame(fileName, observable, outputFile, minVal, maxVal, colors,
     elif observable == "topc":
         visit.AddPlot("Contour", "field")
         p = visit.ContourAttributes()
+        p.scaling = 0 # logscale
 
     # Set min and max values
     p.min = minVal
