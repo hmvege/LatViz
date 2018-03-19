@@ -252,11 +252,16 @@ def main():
 
     params = plotVisit(bin_folder, # path fo .bin folder
                 "euclidean",       # .bin file
-                28,       # size of lattice
-                "energy",          # observable type
-                0.01,              # min value of the scale
-                0.1,               # max value of the scale
-                visitBin,
+                # 28,       # size of lattice
+                # "energy",          # observable type
+                # 0.01,              # min value of the scale
+                # 0.1,               # max value of the scale
+                # visitBin,
+                28,                # size of lattice
+                "topc",            # observable type
+                -0.005,            # min value of the scale
+                0.005,             # max value of the scale
+                visitBin,          # Binary location of Visit 
                 NContours=15,      # number of contours
                 pixelSize=640,     # image size in pixels
                 transparency=50,   # alpha channel (0-255)

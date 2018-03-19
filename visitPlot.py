@@ -156,7 +156,7 @@ def plotConf(folder, files, size, observable, outpuFileName,
     '''    
     # Plot Frames
     for i, file in enumerate(files):
-        makeFrame(file,"energy", folder + "temp/" + str(i).zfill(3), 
+        makeFrame(file, observable, folder + "temp/" + str(i).zfill(3), 
             minVal, maxVal, colors, NContours=NContours, plotTitle=plotTitle,
             pixelSize=pixelSize)
 
