@@ -60,8 +60,7 @@ class FieldAnimation:
 	{output_folder}/field_animations/{observable}/{animations}
 
 	"""
-	def __init__(self, input_folder, output_folder, N, NT, animation_module,
-		verbose=False, dryrun=False):
+	def __init__(self, input_folder, output_folder, N, verbose=False, dryrun=False):
 		"""
 		Initializer for the field animator.
 
@@ -75,9 +74,8 @@ class FieldAnimation:
 		self.verbose = verbose
 		self.dryrun = dryrun
 		self.N = N
-		self.NT = NT
+		self.NT = 2*N
 		self.data = {}
-		self.animation_module = animation_module
 
 		# Folders should work even though they are relative paths
 		self.input_folder = os.path.abspath(input_folder)
@@ -161,6 +159,7 @@ class FieldAnimation:
 		data_dict = {}
 
 		flow_file_list = [f for f in os.listdir(obs_folder) if not f.startswith(".")]
+		flow_file_list = [f for f in os.listdir(obs_folder) if f.endswith("bin")]
 
 		# Goes through flow observables in observable folder
 		for flow_obs_file in sorted(flow_file_list):
@@ -240,13 +239,13 @@ class FieldAnimation:
 			if not self.dryrun:
 				os.remove(frame_path)
 			if self.verbose or self.dryrun:
-				print ">rm %s" % frame_path
+				print "> rm %s" % frame_path
 
 		if not self.dryrun:
 			os.rmdir(folder)
 
 		if self.verbose or self.dryrun:
-			print ">rmdir %s" % folder
+			print "> rmdir %s" % folder
 
 
 	def animate(self, observable, time_type, time_slice, vmin=None, vmax=None,
@@ -329,9 +328,6 @@ class FieldAnimation:
 			vmin = np.min(field)
 		if vmax == None:
 			vmax = np.max(field)
-
-		print vmin
-		print vmax
 
 		# if observable == "energy":
 		# 	vmin = np.log(vmin)
@@ -417,7 +413,6 @@ def plot_iso_surface(F, observable, frame_folder, output_animation_folder,
 		contour_list = np.linspace(vmin, vmax, 30)
 
 	contour_list = contour_list.tolist()
-	print contour_list, vmin, vmax
 
 	f = mlab.figure(size=figsize, bgcolor=(0.8, 0.8, 0.8), fgcolor=(1, 1, 1))
 
@@ -568,11 +563,9 @@ def plot_points3d(F, observable, frame_folder, output_animation_folder,
 
 def main():
 	N_list = [24, 28, 32]
-	NT_list = [48, 56, 64]
 	observable_list = ["energy", "topc"]
 	data_set_list = ["prodRunBeta6_0", "prodRunBeta6_1", "prodRunBeta6_2"]
 	camdist = 0.75
-	animation_method = "mayavi"
 
 	# N_list = [4]
 	# NT_list = [8]
@@ -591,14 +584,16 @@ def main():
 	# Command for plotting with visit
 	# /Applications/VisIt.app/Contents/Resources/bin/visit -cli -no-win -s visitPlot.py
 
-	for N, NT, input_folder, output_folder in zip(N_list, NT_list, input_folder_list, output_folder_list):
+	for N, input_folder, output_folder in zip(N_list, input_folder_list, output_folder_list):
 
-		FieldAnimationObj = FieldAnimation(input_folder, output_folder, N, NT, animation_method, verbose=verbose, dryrun=dryrun)
+		if N==24: continue
+
+		FieldAnimationObj = FieldAnimation(input_folder, output_folder, N, verbose=verbose, dryrun=dryrun)
 
 		for observable in observable_list:
 
-			# FieldAnimationObj.animate(observable, "euclidean", 0, camera_distance=camdist, vmax=vmax, vmin=vmin)
-			# FieldAnimationObj.animate(observable, "euclidean", 50, camera_distance=camdist, vmax=vmax, vmin=vmin)
+			FieldAnimationObj.animate(observable, "euclidean", 0, camera_distance=camdist, vmax=vmax, vmin=vmin)
+			FieldAnimationObj.animate(observable, "euclidean", 50, camera_distance=camdist, vmax=vmax, vmin=vmin)
 			FieldAnimationObj.animate(observable, "euclidean", 100, camera_distance=camdist, vmax=vmax, vmin=vmin)
 			FieldAnimationObj.animate(observable, "euclidean", 200, camera_distance=camdist, vmax=vmax, vmin=vmin)
 			FieldAnimationObj.animate(observable, "euclidean", 400, camera_distance=camdist, vmax=vmax, vmin=vmin)
