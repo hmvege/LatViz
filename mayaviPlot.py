@@ -15,7 +15,8 @@ def check_folder(folder_name, dryrun, verbose=False):
 		if not dryrun:
 			os.mkdir(folder_name)
 
-def create_animation(frame_folder, animation_folder, observable, time_point, method, anim_type):
+def create_animation(frame_folder, animation_folder, observable, time_point, 
+	method, anim_type, file_type, figsize):
 	"""
 	Method for created gifs and movies from generated 3D figures.
 
@@ -25,27 +26,42 @@ def create_animation(frame_folder, animation_folder, observable, time_point, met
 		observable: observable we are creating a gif or a movie for.
 		method: type of 3D plot.
 		anim_type: format of animation. Avaliable: 'gif', 'avi'
-
+		file_type: type of picture file we are converting to an animation.
+		figsize: integer tuple of the figure size.
 	Raises:
 		AssertionError: if anim_type is not recognized.
 	"""
 
-	assert anim_type in ["gif", "avi"], "%s is not a recognized animation type." % anim_type
+	assert anim_type in ["gif", "avi", "mp4"], "%s is not a recognized animation type." % anim_type
+
+	size = figsize
+	for i, s in enumerate(size):
+		if s % 2 != 0:
+			size[i] = s + 1
 
 	animation_path = os.path.join(animation_folder, '%s_%s_t%d.%s' % (observable, method, time_point, anim_type))
 	if anim_type == "gif":
-		input_paths = os.path.join(frame_folder, '%s_t*.png' % method)
+		input_paths = os.path.join(frame_folder, '%s_t*.%s' % (method, file_type))
 		cmd = ['convert', '-delay', '1', '-loop', '0', input_paths, animation_path]
-	else:
-		frame_rate = 8
 
-		input_paths = os.path.join(frame_folder, '%s_t%%02d.png' % method)
-		cmd = ['ffmpeg', '-framerate', '10', '-i', input_paths, '-y',
-			'-qscale', '0', '-r', str(frame_rate), animation_path]
-	
+	elif anim_type == "mp4":
+		frame_rate = 10
+		input_paths = os.path.join(frame_folder, '%s_t%%02d.%s' % (method, file_type))
+		cmd = ['ffmpeg', '-r', str(frame_rate), '-i', input_paths, '-c:v',
+			'libx264', '-crf', '0', '-preset', 'veryslow', '-c:a', 'libmp3lame',
+			'-b:a', '320k', '-y', '-vf', 'scale=%d:%d' % size,
+			'-r', str(frame_rate), animation_path]
+
+	else:
+		frame_rate = 10
+		input_paths = os.path.join(frame_folder, '%s_t%%02d.%s' % (method, file_type))
+		cmd = ['ffmpeg', '-r', str(frame_rate), '-i', input_paths, '-y',
+			'-qscale:v', '0', '-vf', 'scale=%d:%d',
+			'-r', str(frame_rate), animation_path]
+
+	print "> %s" % " ".join(cmd)	
 	proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 	read_out = proc.stdout.read()
-	# print read_out()
 
 	print "Animation %s created." % animation_path
 
@@ -132,9 +148,6 @@ class FieldAnimation:
 			obs_folder_path = os.path.join(self.output_folder, obs)
 			check_folder(obs_folder_path, self.dryrun, verbose=self.verbose)
 			self.data[obs]["animation_folder"] = obs_folder_path
-
-			if self.animation_module == "visit":
-				self._create_time_slice_files(self.data[obs], obs)
 
 			# Factors in missing -1.0/64.0
 			if obs == "energy":
@@ -250,7 +263,8 @@ class FieldAnimation:
 
 	def animate(self, observable, time_type, time_slice, vmin=None, vmax=None,
 		plot_type="iso_surface", figure_size=(640, 640), cgif=True,
-		cmovie=True, clean_up=True, n_contours=20, camera_distance=1.0):
+		cmovie=True, clean_up=True, n_contours=20, camera_distance=1.0,
+		file_type="png"):
 		"""
 		Method for animating in flow time or euclidean time.
 
@@ -302,9 +316,10 @@ class FieldAnimation:
 		elif time_type == "euclidean":
 			# For plotting evolution in euclidean time
 			if time_slice not in sorted(self.data[observable].keys()):
-				raise IndexError(("Out of bounds for plotting Euclidean time "
+				print ("Out of bounds for plotting Euclidean time "
 					"evolution at flow time %d with available points as %s" %
-					 (time_slice, ", ".join(self.data[observable][t].keys()))))
+					 (time_slice, ", ".join([str(i) for i in sorted(self.data[observable].keys()) if isinstance(i, int)])))
+				return
 
 			field = cp.deepcopy(self.data[observable][time_slice])
 
@@ -333,42 +348,40 @@ class FieldAnimation:
 		# 	vmin = np.log(vmin)
 		# 	vmax = np.log(vmax)
 
-		if self.animation_module == "mayavi":
-			if plot_type == "iso_surface":
-				plot_iso_surface(field, observable, self.frame_folder, 
-					self.time_slice_folder, vmin=vmin, vmax=vmax,
-					title=self.data[observable]["title"], 
-					n_contours=n_contours, verbose=self.verbose,
-					camera_distance=camera_distance)
+		if plot_type == "iso_surface":
+			plot_iso_surface(field, observable, self.frame_folder, 
+				self.time_slice_folder, vmin=vmin, vmax=vmax,
+				title=self.data[observable]["title"], 
+				n_contours=n_contours, verbose=self.verbose,
+				camera_distance=camera_distance, figsize=figure_size,
+				file_type=file_type)
 
-			elif plot_type == "volume":
-				plot_scalar_field(field, observable, self.frame_folder, 
-					self.time_slice_folder, vmin=vmin, vmax=vmax,
-					title=self.data[observable]["title"], verbose=self.verbose,
-					camera_distance=camera_distance)
+		elif plot_type == "volume":
+			plot_scalar_field(field, observable, self.frame_folder, 
+				self.time_slice_folder, vmin=vmin, vmax=vmax,
+				title=self.data[observable]["title"], verbose=self.verbose,
+				camera_distance=camera_distance, figsize=figure_size,
+				file_type=file_type)
 
-			elif plot_type == "points3d":
-				plot_points3d(field, observable, self.frame_folder, 
-					self.time_slice_folder, vmin=vmin, vmax=vmax,
-					title=self.data[observable]["title"], verbose=self.verbose,
-					camera_distance=camera_distance)
-
-			else:
-				raise KeyError("Plot type %s not recognized" % plot_type)
-
-			if cgif:
-				create_animation(self.frame_folder, self.time_slice_folder,
-					observable, time_slice, plot_type, "gif")
-
-			if cmovie:
-				create_animation(self.frame_folder, self.time_slice_folder, 
-					observable, time_slice, plot_type, "avi")
-
-		elif self.animation_module == "visit":
-			raise NotImplementedError("Visit module not implemented yet.")
+		elif plot_type == "points3d":
+			plot_points3d(field, observable, self.frame_folder, 
+				self.time_slice_folder, vmin=vmin, vmax=vmax,
+				title=self.data[observable]["title"], verbose=self.verbose,
+				camera_distance=camera_distance, figsize=figure_size,
+				file_type=file_type)
 
 		else:
-			raise KeyError("No animation module by the name of %s" % self.animation_module)
+			raise KeyError("Plot type %s not recognized" % plot_type)
+
+		if cgif:
+			create_animation(self.frame_folder, self.time_slice_folder,
+				observable, time_slice, plot_type, "gif", file_type,
+				figure_size)
+
+		if cmovie:
+			create_animation(self.frame_folder, self.time_slice_folder, 
+				observable, time_slice, plot_type, "mp4", file_type,
+				figure_size)
 
 		if clean_up:
 			self._remove_folder_tree(self.frame_folder)
@@ -423,14 +436,17 @@ def plot_iso_surface(F, observable, frame_folder, output_animation_folder,
 	f.scene.render_window.multi_samples = 8 # Try with 4 if you think this is slow
 
 	for it in xrange(n_time_points):
-		mlab.clf()
+		mlab.clf(figure=f)
 
-		source = mlab.pipeline.scalar_field(F[:,:,:,it])
+		source = mlab.pipeline.scalar_field(F[:,:,:,it], figure=f)
 		mlab.pipeline.iso_surface(source, vmin=vmin, vmax=vmax, 
-			contours=contour_list, reset_zoom=False, opacity=0.5)
+			contours=contour_list, reset_zoom=False, opacity=0.5,
+			figure=f)
 
 		mlab.view(45, 70, distance=np.sqrt(N**3)*camera_distance,
-				focalpoint=(N/2.0, N/2.0, N/2.0))
+				focalpoint=(N/2.0, N/2.0, N/2.0), figure=f)
+
+		# mlab.draw(f)
 
 		mlab.scalarbar(title=" ")
 		mlab.title(title + "t=%d" % (it + 1), size=0.4, height=0.94)
@@ -439,7 +455,9 @@ def plot_iso_surface(F, observable, frame_folder, output_animation_folder,
 		mlab.zlabel(zlabel)
 
 		fpath = os.path.join(frame_folder, "iso_surface_t%02d.%s" % (it, file_type))
-		mlab.savefig(fpath)
+
+		mlab.savefig(fpath, figure=f, magnification='auto', size=None)
+
 		if verbose:
 			print "file created at %s" % fpath
 
@@ -483,24 +501,29 @@ def plot_scalar_field(F, observable, frame_folder, output_animation_folder,
 	f.scene.render_window.multi_samples = 8 # Try with 4 if you think this is slow
 
 	for it in xrange(n_time_points):
-		mlab.clf()
 
-		source = mlab.pipeline.scalar_field(F[:,:,:,it])
+		mlab.clf(figure = f)
+
+		source = mlab.pipeline.scalar_field(F[:,:,:,it], figure=f)
 		vol = mlab.pipeline.volume(source, vmin=vmin, vmax=vmax)
 
-		mlab.scalarbar(title="")
-		mlab.title(title + "t=%d" % it, size=0.4, height=0.94)
+		mlab.scalarbar(title=" ")
+		mlab.title(title + "t=%d" % (it + 1), size=0.4, height=0.94)
 		mlab.xlabel(xlabel)
 		mlab.ylabel(ylabel)
 		mlab.zlabel(zlabel)
 
 		mlab.view(45, 70, distance=np.sqrt(N**3)*camera_distance,
-				focalpoint=(N/2.0, N/2.0, N/2.0))
+				focalpoint=(N/2.0, N/2.0, N/2.0), figure=f)
 
 		fpath = os.path.join(frame_folder, "volume_t%02d.%s" % (it, file_type))
-		mlab.savefig(fpath)
+
+		mlab.savefig(fpath, figure=f, magnification='auto', size=None)
+
 		if verbose:
 			print "file created at %s" % fpath
+
+
 	
 	mlab.close()
 
@@ -554,7 +577,9 @@ def plot_points3d(F, observable, frame_folder, output_animation_folder,
 				focalpoint=(N/2.0, N/2.0, N/2.0))
 
 		fpath = os.path.join(self.frame_folder, "points3d_t%02d.%s" % (it, file_type))
-		mlab.savefig(fpath)
+		
+		mlab.savefig(fpath, figure=f)
+		
 		if verbose:
 			print "file created at %s" % fpath
 
@@ -566,6 +591,7 @@ def main():
 	observable_list = ["energy", "topc"]
 	data_set_list = ["prodRunBeta6_0", "prodRunBeta6_1", "prodRunBeta6_2"]
 	camdist = 0.75
+	figure_size = (640, 640)
 
 	# N_list = [4]
 	# NT_list = [8]
@@ -586,20 +612,20 @@ def main():
 
 	for N, input_folder, output_folder in zip(N_list, input_folder_list, output_folder_list):
 
-		if N==24: continue
+		if N != 32:
+			continue
 
 		FieldAnimationObj = FieldAnimation(input_folder, output_folder, N, verbose=verbose, dryrun=dryrun)
 
 		for observable in observable_list:
-
-			FieldAnimationObj.animate(observable, "euclidean", 0, camera_distance=camdist, vmax=vmax, vmin=vmin)
-			FieldAnimationObj.animate(observable, "euclidean", 50, camera_distance=camdist, vmax=vmax, vmin=vmin)
-			FieldAnimationObj.animate(observable, "euclidean", 100, camera_distance=camdist, vmax=vmax, vmin=vmin)
-			FieldAnimationObj.animate(observable, "euclidean", 200, camera_distance=camdist, vmax=vmax, vmin=vmin)
-			FieldAnimationObj.animate(observable, "euclidean", 400, camera_distance=camdist, vmax=vmax, vmin=vmin)
-			FieldAnimationObj.animate(observable, "euclidean", 600, camera_distance=camdist, vmax=vmax, vmin=vmin)
-			FieldAnimationObj.animate(observable, "euclidean", 800, camera_distance=camdist, vmax=vmax, vmin=vmin)
-			FieldAnimationObj.animate(observable, "euclidean", 1000, camera_distance=camdist, vmax=vmax, vmin=vmin)
+			FieldAnimationObj.animate(observable, "euclidean", 0, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
+			FieldAnimationObj.animate(observable, "euclidean", 50, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
+			FieldAnimationObj.animate(observable, "euclidean", 100, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
+			FieldAnimationObj.animate(observable, "euclidean", 200, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
+			FieldAnimationObj.animate(observable, "euclidean", 400, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
+			FieldAnimationObj.animate(observable, "euclidean", 600, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
+			FieldAnimationObj.animate(observable, "euclidean", 800, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
+			FieldAnimationObj.animate(observable, "euclidean", 1000, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
 			FieldAnimationObj.animate(observable, "flow", 0, camera_distance=camdist)
 			FieldAnimationObj.animate(observable, "flow", 7, camera_distance=camdist)
 			FieldAnimationObj.animate(observable, "flow", 0, plot_type="volume", camera_distance=camdist)
