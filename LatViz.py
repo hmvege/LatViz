@@ -248,39 +248,40 @@ def plotMayavi(inputFolder, outputFolder, latticeSize, observableList=None,
 def main():
     # # Visit plot setup
     # visitBin = "/home/giovanni/Desktop/visit2_13_0.linux-x86_64/bin/visit"
-    # # visitBin = "/Applications/VisIt.app/Contents/Resources/bin/visit"
+    visitBin = "/Applications/VisIt.app/Contents/Resources/bin/visit"
 
-    # bin_folder = os.path.abspath("a/b/")+"/"
+    bin_folder = os.path.abspath("a/b/")+"/"
 
-    # params = plotVisit(bin_folder, # path fo .bin folder
-    #             "euclidean",       # .bin file
-    #             # 28,       # size of lattice
-    #             # "energy",          # observable type
-    #             # 0.01,              # min value of the scale
-    #             # 0.1,               # max value of the scale
-    #             # visitBin,
-    #             28,                # size of lattice
-    #             "topc",            # observable type
-    #             -0.005,            # min value of the scale
-    #             0.005,             # max value of the scale
-    #             visitBin,          # Binary location of Visit 
-    #             NContours=15,      # number of contours
-    #             pixelSize=640,     # image size in pixels
-    #             transparency=50,   # alpha channel (0-255)
-    #             avi=True,          # avi output
-    #             gif=True,          # gif output
-    #             cleanUp=True,      # delete temp files (frames and blocks)
-    #             plotTitle=None     # title (default is the observable)
-    #          )
+    params = plotVisit(bin_folder, # path fo .bin folder
+                "euclidean",       # .bin file
+                32,                # size of lattice
+                "energy",          # observable type
+                0.01,              # min value of the scale
+                0.1,               # max value of the scale
+                visitBin,
+                # 28,                # size of lattice
+                # "topc",            # observable type
+                # -0.005,            # min value of the scale
+                # 0.005,             # max value of the scale
+                # visitBin,          # Binary location of Visit 
+                NContours=15,      # number of contours
+                pixelSize=400,     # image size in pixels
+                transparency=50,   # alpha channel (0-255)
+                avi=True,          # avi output
+                gif=True,          # gif output
+                cleanUp=True,      # delete temp files (frames and blocks)
+                plotTitle=None     # title (default is the observable)
+             )
 
     # Mayavi plot settup    
     latticeSizes = [24, 28, 32]
     observableList = ["energy", "topc"]
 
     # dataSetList = ["prodRunBeta6_0", "prodRunBeta6_1", "prodRunBeta6_2"]
-    dataSetList = ["field_density_freq10_NF400_beta60", 
-        "field_density_freq10_NF400_beta61",
-        "field_density_freq10_NF400_beta62"]
+    dataSetList = ["prodRunBeta6_2"]
+    # dataSetList = ["field_density_freq10_NF400_beta60", 
+    #     "field_density_freq10_NF400_beta61",
+    #     "field_density_freq10_NF400_beta62"]
 
     base_path = "/Users/hansmathiasmamenvege/Programming/FYSSP100/GluonAction"
 
