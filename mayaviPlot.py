@@ -52,6 +52,9 @@ def create_animation(frame_folder, animation_folder, observable, time_point,
 			'-b:a', '320k', '-y', '-vf', 'scale=%d:%d' % size,
 			'-r', str(frame_rate), animation_path]
 
+		# For converting to a good format:
+		# ffmpeg -i energy_iso_surface_t1000.mp4 -pix_fmt yuv420p -crf 18 energy_iso_surface_t1000_good.mp4
+
 	else:
 		frame_rate = 10
 		input_paths = os.path.join(frame_folder, '%s_t%%02d.%s' % (method, file_type))
