@@ -229,7 +229,7 @@ def plotMayavi(inputFolder, outputFolder, latticeSize, observableList=None,
         euclideanTimes = [0, latticeSize] # Lattice size is N
 
     MayaviAnim = FieldAnimation(inputFolder, outputFolder, latticeSize, 
-        verbose=verbose, dryrun=dryrun)
+        flow_times=flowTimes, verbose=verbose, dryrun=dryrun)
 
     for observable in observableList:
 
@@ -252,42 +252,42 @@ def main():
 
     bin_folder = os.path.abspath("a/b/")+"/"
 
-    params = plotVisit(bin_folder, # path fo .bin folder
-                "euclidean",       # .bin file
-                32,                # size of lattice
-                "energy",          # observable type
-                0.01,              # min value of the scale
-                0.1,               # max value of the scale
-                visitBin,
-                # 28,                # size of lattice
-                # "topc",            # observable type
-                # -0.005,            # min value of the scale
-                # 0.005,             # max value of the scale
-                # visitBin,          # Binary location of Visit 
-                NContours=15,      # number of contours
-                pixelSize=400,     # image size in pixels
-                transparency=50,   # alpha channel (0-255)
-                avi=True,          # avi output
-                gif=True,          # gif output
-                cleanUp=True,      # delete temp files (frames and blocks)
-                plotTitle=None     # title (default is the observable)
-             )
+    # params = plotVisit(bin_folder, # path fo .bin folder
+    #             "euclidean",       # .bin file
+    #             32,                # size of lattice
+    #             "energy",          # observable type
+    #             0.01,              # min value of the scale
+    #             0.1,               # max value of the scale
+    #             visitBin,
+    #             # 28,                # size of lattice
+    #             # "topc",            # observable type
+    #             # -0.005,            # min value of the scale
+    #             # 0.005,             # max value of the scale
+    #             # visitBin,          # Binary location of Visit 
+    #             NContours=15,      # number of contours
+    #             pixelSize=400,     # image size in pixels
+    #             transparency=50,   # alpha channel (0-255)
+    #             avi=True,          # avi output
+    #             gif=True,          # gif output
+    #             cleanUp=True,      # delete temp files (frames and blocks)
+    #             plotTitle=None     # title (default is the observable)
+    #          )
 
     # Mayavi plot settup    
     latticeSizes = [24, 28, 32]
     observableList = ["energy", "topc"]
 
-    # dataSetList = ["prodRunBeta6_0", "prodRunBeta6_1", "prodRunBeta6_2"]
-    dataSetList = ["prodRunBeta6_2"]
+    # dataSetList = ["prodRunBeta6_0", "prodRunBeta6_1", "prodRunBeta6_2"] # redundant
     # dataSetList = ["field_density_freq10_NF400_beta60", 
     #     "field_density_freq10_NF400_beta61",
     #     "field_density_freq10_NF400_beta62"]
+    dataSetList = ["b60", "b61", "b62"]
 
     base_path = "/Users/hansmathiasmamenvege/Programming/FYSSP100/GluonAction"
 
-    # inputFolderLocation = "output"
-    # inputFolderLocation = "scalar_fields_data/freq25"
-    inputFolderLocation = "scalar_fields_data/freq10"
+    # inputFolderLocation = "output" # redundant, use freq25(exact same data)
+    inputFolderLocation = "scalar_fields_data/freq25"
+    # inputFolderLocation = "scalar_fields_data/freq10"
     outputFolderLocation = "figures"
 
     joinPaths = lambda a, b: os.path.join(base_path, a, b)
@@ -296,12 +296,12 @@ def main():
 
     paramList = zip(inputFolderList, outputFolderList, latticeSizes)
 
-    paramList = paramList[1:2]
+    paramList = paramList[2:]
 
     for inputFolder, outputFolder, N in paramList:
         plotMayavi(inputFolder, outputFolder, N,
-            flowTimes=[800], # Flow times to plot at
-            euclideanTimes=None, # Euclidean times to plot at.
+            flowTimes=[800, 1000], # Flow times to plot at
+            euclideanTimes=[], # Euclidean times to plot at.
             vmax=None,
             vmin=None,
             camdist=0.75, # Camera distance is sqrt(N^3)*camdist

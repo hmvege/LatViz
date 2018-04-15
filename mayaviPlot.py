@@ -3,6 +3,7 @@ import os
 import subprocess
 import copy as cp
 import re
+import matplotlib.image as pltimg
 from mayavi import mlab
 
 __all__ = ["check_folder", "create_animation", "FieldAnimation", "plot_iso_surface", "plot_scalar_field", "plot_points3d"]
@@ -16,7 +17,7 @@ def check_folder(folder_name, dryrun, verbose=False):
 			os.mkdir(folder_name)
 
 def create_animation(frame_folder, animation_folder, observable, time_point, 
-	method, anim_type, file_type, figsize):
+	method, anim_type, file_type):
 	"""
 	Method for created gifs and movies from generated 3D figures.
 
@@ -34,10 +35,14 @@ def create_animation(frame_folder, animation_folder, observable, time_point,
 
 	assert anim_type in ["gif", "avi", "mp4"], "%s is not a recognized animation type." % anim_type
 
-	size = figsize
-	for i, s in enumerate(size):
-		if s % 2 != 0:
-			size[i] = s + 1
+	# size = figsize
+	def _get_size(folder, fpath):
+		size = pltimg.imread(os.path.join(folder, fpath)).shape[:2]
+		_return_size = [size[0], size[1]]
+		for i, s in enumerate(size):
+			if s % 2 != 0:
+				_return_size[i] = s + 1
+		return _return_size[::-1]
 
 	animation_path = os.path.join(animation_folder, '%s_%s_t%d.%s' % (observable, method, time_point, anim_type))
 	if anim_type == "gif":
@@ -47,10 +52,14 @@ def create_animation(frame_folder, animation_folder, observable, time_point,
 	elif anim_type == "mp4":
 		frame_rate = 10
 		input_paths = os.path.join(frame_folder, '%s_t%%02d.%s' % (method, file_type))
+		size = _get_size(frame_folder, os.listdir(frame_folder)[0])
 		cmd = ['ffmpeg', '-r', str(frame_rate), '-i', input_paths, '-c:v',
 			'libx264', '-crf', '0', '-preset', 'veryslow', '-c:a', 'libmp3lame',
-			'-b:a', '320k', '-y', '-vf', 'scale=%d:%d' % size,
+			'-b:a', '320k', '-y', '-vf', 'scale=%d:%d' % (size[0], size[1]),
 			'-r', str(frame_rate), animation_path]
+		# cmd = ['ffmpeg', '-r', str(frame_rate), '-i', input_paths, '-c:v',
+		# 	'libx264', '-crf', '0', '-preset', 'veryslow', '-c:a', 'libmp3lame',
+		# 	'-b:a', '320k', '-y', '-r', str(frame_rate), animation_path]
 
 		# For converting to a good format:
 		# ffmpeg -i energy_iso_surface_t1000.mp4 -pix_fmt yuv420p -crf 18 energy_iso_surface_t1000_good.mp4
@@ -58,8 +67,9 @@ def create_animation(frame_folder, animation_folder, observable, time_point,
 	else:
 		frame_rate = 10
 		input_paths = os.path.join(frame_folder, '%s_t%%02d.%s' % (method, file_type))
+		size = _get_size(frame_folder, os.listdir(input_paths)[0])
 		cmd = ['ffmpeg', '-r', str(frame_rate), '-i', input_paths, '-y',
-			'-qscale:v', '0', '-vf', 'scale=%d:%d',
+			'-qscale:v', '0', '-vf', 'scale=%d:%d' % (size[0], size[1]),
 			'-r', str(frame_rate), animation_path]
 
 	print "> %s" % " ".join(cmd)	
@@ -79,7 +89,8 @@ class FieldAnimation:
 	{output_folder}/field_animations/{observable}/{animations}
 
 	"""
-	def __init__(self, input_folder, output_folder, N, verbose=False, dryrun=False):
+	def __init__(self, input_folder, output_folder, N, flow_times=None, 
+		verbose=False, dryrun=False):
 		"""
 		Initializer for the field animator.
 
@@ -95,6 +106,11 @@ class FieldAnimation:
 		self.N = N
 		self.NT = 2*N
 		self.data = {}
+
+		if flow_times != None:
+			self.flow_times = flow_times
+		else:
+			self.flow_times = False
 
 		# Folders should work even though they are relative paths
 		self.input_folder = os.path.abspath(input_folder)
@@ -175,7 +191,11 @@ class FieldAnimation:
 		data_dict = {}
 
 		flow_file_list = [f for f in os.listdir(obs_folder) if not f.startswith(".")]
-		flow_file_list = [f for f in os.listdir(obs_folder) if f.endswith("bin")]
+		flow_file_list = [f for f in flow_file_list if f.endswith("bin")]
+
+		# Only retrieves relevant files
+		if self.flow_times != False:
+			flow_file_list = [f for f in flow_file_list if self._get_cfg_num_from_file(f) in self.flow_times]
 
 		# Goes through flow observables in observable folder
 		for flow_obs_file in sorted(flow_file_list):
@@ -240,7 +260,6 @@ class FieldAnimation:
 			check_folder(temp_flow_time_folder, self.dryrun, self.verbose)
 
 			for it in xrange(self.NT):
-
 				f_path = os.path.join(temp_flow_time_folder, "file%03d.splitbin" % it)
 
 				with open(f_path, "wb") as f:
@@ -378,13 +397,11 @@ class FieldAnimation:
 
 		if cgif:
 			create_animation(self.frame_folder, self.time_slice_folder,
-				observable, time_slice, plot_type, "gif", file_type,
-				figure_size)
+				observable, time_slice, plot_type, "gif", file_type)
 
 		if cmovie:
 			create_animation(self.frame_folder, self.time_slice_folder, 
-				observable, time_slice, plot_type, "mp4", file_type,
-				figure_size)
+				observable, time_slice, plot_type, "mp4", file_type)
 
 		if clean_up:
 			self._remove_folder_tree(self.frame_folder)
@@ -525,8 +542,6 @@ def plot_scalar_field(F, observable, frame_folder, output_animation_folder,
 
 		if verbose:
 			print "file created at %s" % fpath
-
-
 	
 	mlab.close()
 
