@@ -148,7 +148,7 @@ class FieldAnimation:
 
 		assert os.path.isdir(scalar_field_folder), ("%s folder not found." 
 			% scalar_field_folder)
-		
+
 		# Goes through the observables in the scalar fields folder
 		for obs in os.listdir(scalar_field_folder):
 			obs_folder = os.path.join(scalar_field_folder, obs)
@@ -160,7 +160,7 @@ class FieldAnimation:
 			# Ensures we have flow time files in the observable folder
 			if len(os.listdir(obs_folder)) == 0:
 				continue 
-			
+
 			self.data[obs] = cp.deepcopy(self._get_flow_files(obs_folder))
 
 			# Creates folder of where to store the animation
@@ -196,6 +196,7 @@ class FieldAnimation:
 		# Only retrieves relevant files
 		if self.flow_times != False:
 			flow_file_list = [f for f in flow_file_list if self._get_cfg_num_from_file(f) in self.flow_times]
+
 
 		# Goes through flow observables in observable folder
 		for flow_obs_file in sorted(flow_file_list):
@@ -321,7 +322,7 @@ class FieldAnimation:
 			# For plotting evolution in flow time
 
 			field = []
-			
+
 			if time_slice >= self.data[observable][0].shape[-1]:
 				raise IndexError(("Out of bounds for plotting flow at Euclidean time point %d"
 					" in data with points %d" % (time_slice, self.data[observable][0].shape[-1])))
@@ -607,7 +608,10 @@ def plot_points3d(F, observable, frame_folder, output_animation_folder,
 def main():
 	N_list = [24, 28, 32]
 	observable_list = ["energy", "topc"]
-	data_set_list = ["prodRunBeta6_0", "prodRunBeta6_1", "prodRunBeta6_2"]
+	observable_list = ["topc"]
+	data_set_list = ["field_density_freq10_NF400_beta60", 
+        "field_density_freq10_NF400_beta61",
+        "field_density_freq10_NF400_beta62"]
 	camdist = 0.75
 	figure_size = (640, 640)
 
@@ -615,9 +619,30 @@ def main():
 	# NT_list = [8]
 	# data_set_list = ["lattice_field_density4x8"]
 
-	base_path_mac = "/Users/hansmathiasmamenvege/Programming/FYSSP100/GluonAction"
-	input_folder_list = [os.path.join(base_path_mac, "output", f) for f in data_set_list]
-	output_folder_list = [os.path.join(base_path_mac, "figures", f) for f in data_set_list]
+ # 	../GluonAction/scalar_fields_data/freq10/field_density_freq10_NF400_beta62/scalar_fields/
+	# base_path_mac = "/Users/hansmathiasmamenvege/Programming/LQCD/GluonAction/"
+	# base_path_mac += "scalar_fields_data/freq25"
+	# input_folder_list = [os.path.join(base_path_mac, "output", f) for f in data_set_list]
+	# output_folder_list = [os.path.join(base_path_mac, "figures", f) for f in data_set_list]
+
+
+	# dataSetList = ["prodRunBeta6_0", "prodRunBeta6_1", "prodRunBeta6_2"] # redundant
+	dataSetList = ["field_density_freq10_NF400_beta60", 
+		"field_density_freq10_NF400_beta61",
+		"field_density_freq10_NF400_beta62"]
+	# dataSetList = ["b60", "b61", "b62"]
+
+	base_path = "/Users/hansmathiasmamenvege/Programming/LQCD/GluonAction"
+
+	# inputFolderLocation = "output" # redundant, use freq25(exact same data)
+	# inputFolderLocation = "scalar_fields_data/freq25"
+	inputFolderLocation = "scalar_fields_data/freq10"
+	outputFolderLocation = "figures"
+
+	joinPaths = lambda a, b: os.path.join(base_path, a, b)
+	input_folder_list = [joinPaths(inputFolderLocation, f) for f in dataSetList]
+	output_folder_list = [joinPaths(outputFolderLocation, f) for f in dataSetList]
+
 
 	verbose = True
 	dryrun = False
@@ -636,18 +661,18 @@ def main():
 		FieldAnimationObj = FieldAnimation(input_folder, output_folder, N, verbose=verbose, dryrun=dryrun)
 
 		for observable in observable_list:
-			FieldAnimationObj.animate(observable, "euclidean", 0, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
-			FieldAnimationObj.animate(observable, "euclidean", 50, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
-			FieldAnimationObj.animate(observable, "euclidean", 100, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
-			FieldAnimationObj.animate(observable, "euclidean", 200, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
-			FieldAnimationObj.animate(observable, "euclidean", 400, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
-			FieldAnimationObj.animate(observable, "euclidean", 600, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
-			FieldAnimationObj.animate(observable, "euclidean", 800, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
-			FieldAnimationObj.animate(observable, "euclidean", 1000, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
+			# FieldAnimationObj.animate(observable, "euclidean", 0, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
+			# FieldAnimationObj.animate(observable, "euclidean", 50, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
+			# FieldAnimationObj.animate(observable, "euclidean", 100, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
+			# FieldAnimationObj.animate(observable, "euclidean", 200, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
+			# FieldAnimationObj.animate(observable, "euclidean", 400, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
+			# FieldAnimationObj.animate(observable, "euclidean", 600, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
+			# FieldAnimationObj.animate(observable, "euclidean", 800, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
+			# FieldAnimationObj.animate(observable, "euclidean", 1000, camera_distance=camdist, vmax=vmax, vmin=vmin, figure_size=figure_size)
 			FieldAnimationObj.animate(observable, "flow", 0, camera_distance=camdist)
 			FieldAnimationObj.animate(observable, "flow", 7, camera_distance=camdist)
-			FieldAnimationObj.animate(observable, "flow", 0, plot_type="volume", camera_distance=camdist)
-			FieldAnimationObj.animate(observable, "flow", 7, plot_type="volume", camera_distance=camdist)
+			# FieldAnimationObj.animate(observable, "flow", 0, plot_type="volume", camera_distance=camdist)
+			# FieldAnimationObj.animate(observable, "flow", 7, plot_type="volume", camera_distance=camdist)
 
 	print "\n\nDone"
 

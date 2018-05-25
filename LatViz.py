@@ -224,9 +224,13 @@ def plotMayavi(inputFolder, outputFolder, latticeSize, observableList=None,
 
     if flowTimes == None:
         flowTimes = [0, 50, 100, 200, 400, 600, 800, 1000]
+    elif len(flowTimes) == 0:
+        flowTimes = None
 
     if euclideanTimes == None:
         euclideanTimes = [0, latticeSize] # Lattice size is N
+    elif len(euclideanTimes) == 0:
+        euclideanTimes = None
 
     MayaviAnim = FieldAnimation(inputFolder, outputFolder, latticeSize, 
         flow_times=flowTimes, verbose=verbose, dryrun=dryrun)
@@ -236,6 +240,8 @@ def plotMayavi(inputFolder, outputFolder, latticeSize, observableList=None,
         for iflow in flowTimes:
             MayaviAnim.animate(observable, "euclidean", iflow, 
                 camera_distance=camdist, vmax=vmax, vmin=vmin)
+        else:
+            continue
 
         for ieucl in euclideanTimes:
             MayaviAnim.animate(observable, "flow", ieucl, 
@@ -244,6 +250,8 @@ def plotMayavi(inputFolder, outputFolder, latticeSize, observableList=None,
             if observable != "energy":
                 MayaviAnim.animate(observable, "flow", ieucl, 
                     plot_type="volume", camera_distance=camdist)
+        else:
+            continue
 
 def main():
     # # Visit plot setup
@@ -273,21 +281,26 @@ def main():
     #             plotTitle=None     # title (default is the observable)
     #          )
 
+    # To make mayavi work, need to run fix found at:
+    # https://github.com/enthought/mayavi/issues/474
+    # and at
+    # 
+
     # Mayavi plot settup    
     latticeSizes = [24, 28, 32]
     observableList = ["energy", "topc"]
 
     # dataSetList = ["prodRunBeta6_0", "prodRunBeta6_1", "prodRunBeta6_2"] # redundant
-    # dataSetList = ["field_density_freq10_NF400_beta60", 
-    #     "field_density_freq10_NF400_beta61",
-    #     "field_density_freq10_NF400_beta62"]
-    dataSetList = ["b60", "b61", "b62"]
+    dataSetList = ["field_density_freq10_NF400_beta60", 
+        "field_density_freq10_NF400_beta61",
+        "field_density_freq10_NF400_beta62"]
+    # dataSetList = ["b60", "b61", "b62"]
 
-    base_path = "/Users/hansmathiasmamenvege/Programming/FYSSP100/GluonAction"
+    base_path = "/Users/hansmathiasmamenvege/Programming/LQCD/GluonAction"
 
     # inputFolderLocation = "output" # redundant, use freq25(exact same data)
     inputFolderLocation = "scalar_fields_data/freq25"
-    # inputFolderLocation = "scalar_fields_data/freq10"
+    inputFolderLocation = "scalar_fields_data/freq10"
     outputFolderLocation = "figures"
 
     joinPaths = lambda a, b: os.path.join(base_path, a, b)
@@ -300,8 +313,8 @@ def main():
 
     for inputFolder, outputFolder, N in paramList:
         plotMayavi(inputFolder, outputFolder, N,
-            flowTimes=[800, 1000], # Flow times to plot at
-            euclideanTimes=[], # Euclidean times to plot at.
+            flowTimes=[], # Flow times to plot at
+            euclideanTimes=[0, 15, 31], # Euclidean times to plot at.
             vmax=None,
             vmin=None,
             camdist=0.75, # Camera distance is sqrt(N^3)*camdist
