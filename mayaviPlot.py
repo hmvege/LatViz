@@ -6,9 +6,7 @@ import re
 import matplotlib.image as pltimg
 from mayavi import mlab
 
-__all__ = ["check_folder", "create_animation", "FieldAnimation", "plot_iso_surface", "plot_scalar_field", "plot_points3d"]
-
-def check_folder(folder_name, dryrun, verbose=False):
+def check_folder(folder_name, dryrun=False, verbose=False):
 	# Checks that figures folder exist, and if not will create it
 	if not os.path.isdir(folder_name):
 		if dryrun or verbose:
@@ -16,7 +14,8 @@ def check_folder(folder_name, dryrun, verbose=False):
 		if not dryrun:
 			os.mkdir(folder_name)
 
-def create_animation(frame_folder, animation_folder, observable, time_point, 
+
+def create_animation(frame_folder, animation_folder, observable, time_point,
 	method, anim_type, file_type):
 	"""
 	Method for created gifs and movies from generated 3D figures.
@@ -33,7 +32,8 @@ def create_animation(frame_folder, animation_folder, observable, time_point,
 		AssertionError: if anim_type is not recognized.
 	"""
 
-	assert anim_type in ["gif", "avi", "mp4"], "%s is not a recognized animation type." % anim_type
+	assert anim_type in [
+	    "gif", "avi", "mp4"], "%s is not a recognized animation type." % anim_type
 
 	# size = figsize
 	def _get_size(folder, fpath):
@@ -44,14 +44,16 @@ def create_animation(frame_folder, animation_folder, observable, time_point,
 				_return_size[i] = s + 1
 		return _return_size[::-1]
 
-	animation_path = os.path.join(animation_folder, '%s_%s_t%d.%s' % (observable, method, time_point, anim_type))
+	animation_path = os.path.join(animation_folder, '%s_%s_t%d.%s' % (
+	    observable, method, time_point, anim_type))
 	if anim_type == "gif":
 		input_paths = os.path.join(frame_folder, '%s_t*.%s' % (method, file_type))
 		cmd = ['convert', '-delay', '1', '-loop', '0', input_paths, animation_path]
 
 	elif anim_type == "mp4":
 		frame_rate = 10
-		input_paths = os.path.join(frame_folder, '%s_t%%02d.%s' % (method, file_type))
+		input_paths = os.path.join(
+		    frame_folder, '%s_t%%02d.%s' % (method, file_type))
 		size = _get_size(frame_folder, os.listdir(frame_folder)[0])
 		cmd = ['ffmpeg', '-r', str(frame_rate), '-i', input_paths, '-c:v',
 			'libx264', '-crf', '0', '-preset', 'veryslow', '-c:a', 'libmp3lame',
@@ -66,17 +68,19 @@ def create_animation(frame_folder, animation_folder, observable, time_point,
 
 	else:
 		frame_rate = 10
-		input_paths = os.path.join(frame_folder, '%s_t%%02d.%s' % (method, file_type))
+		input_paths = os.path.join(
+		    frame_folder, '%s_t%%02d.%s' % (method, file_type))
 		size = _get_size(frame_folder, os.listdir(input_paths)[0])
 		cmd = ['ffmpeg', '-r', str(frame_rate), '-i', input_paths, '-y',
 			'-qscale:v', '0', '-vf', 'scale=%d:%d' % (size[0], size[1]),
 			'-r', str(frame_rate), animation_path]
 
-	print "> %s" % " ".join(cmd)	
+	print "> %s" % " ".join(cmd)
 	proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 	read_out = proc.stdout.read()
 
 	print "Animation %s created." % animation_path
+
 
 class FieldAnimation:
 	"""
@@ -89,13 +93,14 @@ class FieldAnimation:
 	{output_folder}/field_animations/{observable}/{animations}
 
 	"""
-	def __init__(self, input_folder, output_folder, N, flow_times=None, 
+
+	def __init__(self, input_folder, output_folder, N, flow_times=None,
 		verbose=False, dryrun=False):
 		"""
 		Initializer for the field animator.
 
 		Args:
-			batch_data_folder: absolute path to the data folder. Will look 
+			batch_data_folder: absolute path to the data folder. Will look
 				for scalar fields inside, and observables inside there. The
 				batch name will be extracted from the last folder. An example
 				is: /{abs_path_to_data_batch}/data_batch/beta_value/
@@ -146,7 +151,7 @@ class FieldAnimation:
 		# Load the different data of the fields
 		scalar_field_folder = os.path.join(self.input_folder, "scalar_fields")
 
-		assert os.path.isdir(scalar_field_folder), ("%s folder not found." 
+		assert os.path.isdir(scalar_field_folder), ("%s folder not found."
 			% scalar_field_folder)
 
 		# Goes through the observables in the scalar fields folder
@@ -159,7 +164,7 @@ class FieldAnimation:
 
 			# Ensures we have flow time files in the observable folder
 			if len(os.listdir(obs_folder)) == 0:
-				continue 
+				continue
 
 			self.data[obs] = cp.deepcopy(self._get_flow_files(obs_folder))
 
@@ -195,13 +200,13 @@ class FieldAnimation:
 
 		# Only retrieves relevant files
 		if self.flow_times != False:
-			flow_file_list = [f for f in flow_file_list if self._get_cfg_num_from_file(f) in self.flow_times]
-
+			flow_file_list = [
+			    f for f in flow_file_list if self._get_cfg_num_from_file(f) in self.flow_times]
 
 		# Goes through flow observables in observable folder
 		for flow_obs_file in sorted(flow_file_list):
 			flow_obs_file_path = os.path.join(obs_folder, flow_obs_file)
-			
+
 			# Gets data array
 			raw_data = np.fromfile(flow_obs_file_path)
 
@@ -212,7 +217,7 @@ class FieldAnimation:
 			flow_time = self._get_cfg_num_from_file(flow_obs_file)
 
 			# Converts data array to data field, and sets it in the dictionary
-			data_dict[flow_time] = self._convert_to_field(raw_data) 
+			data_dict[flow_time] = self._convert_to_field(raw_data)
 
 		return data_dict
 
@@ -233,19 +238,18 @@ class FieldAnimation:
 
 	def _get_cfg_num_from_file(self, fname):
 		"""
-		Function for getting the flow time from a file name by looking 
+		Function for getting the flow time from a file name by looking
 		for 'config'.
 
 		Args:
 			fname: string file name to look for config number in.
-		
+
 		Returns:
 			integer config number.
 		"""
 		_flow_time_list = re.findall("config(\d+)", fname)
 		assert len(_flow_time_list) == 1, "error in file name: %s" % fname
 		return int(_flow_time_list[0])
-
 
 	def _create_time_slice_files(self, data_obj, observable):
 		"""Create binary time sliced files."""
@@ -264,8 +268,7 @@ class FieldAnimation:
 				f_path = os.path.join(temp_flow_time_folder, "file%03d.splitbin" % it)
 
 				with open(f_path, "wb") as f:
-					f.write(data_obj[flow_time][:,:,:,it].tobytes())
-
+					f.write(data_obj[flow_time][:, :, :, it].tobytes())
 
 	def _remove_folder_tree(self, folder):
 		"""Deletes folder and its files."""
@@ -283,7 +286,6 @@ class FieldAnimation:
 		if self.verbose or self.dryrun:
 			print "> rmdir %s" % folder
 
-
 	def animate(self, observable, time_type, time_slice, vmin=None, vmax=None,
 		plot_type="iso_surface", figure_size=(640, 640), cgif=True,
 		cmovie=True, clean_up=True, n_contours=20, camera_distance=1.0,
@@ -296,8 +298,8 @@ class FieldAnimation:
 			time_type: "euclidean" or "flow". Will plot evolution in provided
 				time type.
 			time_slice: integer in euclidean time we are looking at.
-			plot_type: optional argument for what kind of animation to be 
-				performed., default is 'iso_surface'. Choose between 
+			plot_type: optional argument for what kind of animation to be
+				performed., default is 'iso_surface'. Choose between
 				'iso_surface', 'points3d' and 'volume'.
 			figure_size: tuple of the figure size to be plotted. Default is
 				640x640.
@@ -307,15 +309,17 @@ class FieldAnimation:
 		Raises:
 			IndexError: if the selected time slice is out of bounds.
 			KeyError: if we are trying to plot neither Euclidean nor Flow time,
-				if plot type is not recognized, or if the plotting module is 
+				if plot type is not recognized, or if the plotting module is
 				not recognized.
 		"""
 
 		# Sets up all of the available flow time in a sorted list
-		flow_times = sorted([key for key in self.data[observable].keys() if isinstance(key, int)])
+		flow_times = sorted(
+		    [key for key in self.data[observable].keys() if isinstance(key, int)])
 
 		# Sets up folders
-		time_type_folder = os.path.join(self.data[observable]["animation_folder"], time_type)
+		time_type_folder = os.path.join(
+		    self.data[observable]["animation_folder"], time_type)
 		check_folder(time_type_folder, self.dryrun, verbose=self.verbose)
 
 		if time_type == "flow":
@@ -327,19 +331,20 @@ class FieldAnimation:
 				raise IndexError(("Out of bounds for plotting flow at Euclidean time point %d"
 					" in data with points %d" % (time_slice, self.data[observable][0].shape[-1])))
 
-			# Sets up data to be plotted			
+			# Sets up data to be plotted
 			for t in flow_times:
-				field.append(cp.deepcopy(self.data[observable][t][:,:,:,time_slice]))
+				field.append(cp.deepcopy(self.data[observable][t][:, :, :, time_slice]))
 			field = np.asarray(field)
 			field = np.rollaxis(field, 0, 4)
 
 			# Creates the folder to store the different flowed lattice figures in
-			time_slice_folder = os.path.join(time_type_folder, "t_eucl" + str(time_slice))
+			time_slice_folder = os.path.join(
+			    time_type_folder, "t_eucl" + str(time_slice))
 
 		elif time_type == "euclidean":
 			# For plotting evolution in euclidean time
 			if time_slice not in sorted(self.data[observable].keys()):
-				print ("Out of bounds for plotting Euclidean time "
+				print("Out of bounds for plotting Euclidean time "
 					"evolution at flow time %d with available points as %s" %
 					 (time_slice, ", ".join([str(i) for i in sorted(self.data[observable].keys()) if isinstance(i, int)])))
 				return
@@ -347,7 +352,8 @@ class FieldAnimation:
 			field = cp.deepcopy(self.data[observable][time_slice])
 
 			# Creates folder for different times to store the figures in
-			time_slice_folder = os.path.join(time_type_folder, "t_flow" + str(time_slice))
+			time_slice_folder = os.path.join(
+			    time_type_folder, "t_flow" + str(time_slice))
 
 		else:
 			raise KeyError("Cannot plot in %s." % time_type)
@@ -360,7 +366,7 @@ class FieldAnimation:
 		check_folder(self.frame_folder, self.dryrun, verbose=self.verbose)
 
 		# Creates folder of where to store the animations
-		self.time_slice_folder = time_slice_folder 
+		self.time_slice_folder = time_slice_folder
 
 		if vmin == None:
 			vmin = np.min(field)
@@ -372,22 +378,22 @@ class FieldAnimation:
 		# 	vmax = np.log(vmax)
 
 		if plot_type == "iso_surface":
-			plot_iso_surface(field, observable, self.frame_folder, 
+			plot_iso_surface(field, observable, self.frame_folder,
 				self.time_slice_folder, vmin=vmin, vmax=vmax,
-				title=self.data[observable]["title"], 
+				title=self.data[observable]["title"],
 				n_contours=n_contours, verbose=self.verbose,
 				camera_distance=camera_distance, figsize=figure_size,
 				file_type=file_type)
 
 		elif plot_type == "volume":
-			plot_scalar_field(field, observable, self.frame_folder, 
+			plot_scalar_field(field, observable, self.frame_folder,
 				self.time_slice_folder, vmin=vmin, vmax=vmax,
 				title=self.data[observable]["title"], verbose=self.verbose,
 				camera_distance=camera_distance, figsize=figure_size,
 				file_type=file_type)
 
 		elif plot_type == "points3d":
-			plot_points3d(field, observable, self.frame_folder, 
+			plot_points3d(field, observable, self.frame_folder,
 				self.time_slice_folder, vmin=vmin, vmax=vmax,
 				title=self.data[observable]["title"], verbose=self.verbose,
 				camera_distance=camera_distance, figsize=figure_size,
@@ -401,16 +407,16 @@ class FieldAnimation:
 				observable, time_slice, plot_type, "gif", file_type)
 
 		if cmovie:
-			create_animation(self.frame_folder, self.time_slice_folder, 
+			create_animation(self.frame_folder, self.time_slice_folder,
 				observable, time_slice, plot_type, "mp4", file_type)
 
 		if clean_up:
 			self._remove_folder_tree(self.frame_folder)
 
 
-def plot_iso_surface(F, observable, frame_folder, output_animation_folder, 
-	file_type="png", vmin=None, vmax=None, cgif=True, cmovie=True, 
-	n_contours=20, camera_distance=1.0, xlabel="x", ylabel="y", 
+def plot_iso_surface(F, observable, frame_folder, output_animation_folder,
+	file_type="png", vmin=None, vmax=None, cgif=True, cmovie=True,
+	n_contours=20, camera_distance=1.0, xlabel="x", ylabel="y",
 	zlabel="z", title=None, figsize=(640, 640), verbose=False):
 	"""
 	Function for plotting iso surfaces and animate the result.
@@ -426,7 +432,7 @@ def plot_iso_surface(F, observable, frame_folder, output_animation_folder,
 		vmax: float upper cutoff value of the field. Default is None.
 		cgif: bool if we are to create a gif. Default is True.
 		cmovie: bool if we are to create a movie. Default is True.
-		n_contours: optional integer argument for number of contours. 
+		n_contours: optional integer argument for number of contours.
 			Default is 15.
 		verbose: default is False
 	"""
@@ -450,17 +456,17 @@ def plot_iso_surface(F, observable, frame_folder, output_animation_folder,
 
 	f = mlab.figure(size=figsize, bgcolor=(0.8, 0.8, 0.8), fgcolor=(1, 1, 1))
 
-	# Render options	
+	# Render options
 	f.scene.render_window.point_smoothing = True
 	f.scene.render_window.line_smoothing = True
 	f.scene.render_window.polygon_smoothing = True
-	f.scene.render_window.multi_samples = 8 # Try with 4 if you think this is slow
+	f.scene.render_window.multi_samples = 8  # Try with 4 if you think this is slow
 
 	for it in xrange(n_time_points):
 		mlab.clf(figure=f)
 
-		source = mlab.pipeline.scalar_field(F[:,:,:,it], figure=f)
-		mlab.pipeline.iso_surface(source, vmin=vmin, vmax=vmax, 
+		source = mlab.pipeline.scalar_field(F[:, :, :, it], figure=f)
+		mlab.pipeline.iso_surface(source, vmin=vmin, vmax=vmax,
 			contours=contour_list, reset_zoom=False, opacity=0.5,
 			figure=f)
 
@@ -484,9 +490,10 @@ def plot_iso_surface(F, observable, frame_folder, output_animation_folder,
 
 	mlab.close()
 
-def plot_scalar_field(F, observable, frame_folder, output_animation_folder, 
-	file_type="png", vmin=None, vmax=None, cgif=True, cmovie=True, 
-	camera_distance=1.0, xlabel="x", ylabel="y", zlabel="z", title=None, 
+
+def plot_scalar_field(F, observable, frame_folder, output_animation_folder,
+	file_type="png", vmin=None, vmax=None, cgif=True, cmovie=True,
+	camera_distance=1.0, xlabel="x", ylabel="y", zlabel="z", title=None,
 	figsize=(640, 640), verbose=False):
 	"""
 	Function for plotting a scalar field.
@@ -515,17 +522,17 @@ def plot_scalar_field(F, observable, frame_folder, output_animation_folder,
 
 	f = mlab.figure(size=figsize, bgcolor=(0.8, 0.8, 0.8), fgcolor=(1, 1, 1))
 
-	# Render options	
+	# Render options
 	f.scene.render_window.point_smoothing = True
 	f.scene.render_window.line_smoothing = True
 	f.scene.render_window.polygon_smoothing = True
-	f.scene.render_window.multi_samples = 8 # Try with 4 if you think this is slow
+	f.scene.render_window.multi_samples = 8  # Try with 4 if you think this is slow
 
 	for it in xrange(n_time_points):
 
-		mlab.clf(figure = f)
+		mlab.clf(figure=f)
 
-		source = mlab.pipeline.scalar_field(F[:,:,:,it], figure=f)
+		source = mlab.pipeline.scalar_field(F[:, :, :, it], figure=f)
 		vol = mlab.pipeline.volume(source, vmin=vmin, vmax=vmax)
 
 		mlab.scalarbar(title=" ")
@@ -543,13 +550,13 @@ def plot_scalar_field(F, observable, frame_folder, output_animation_folder,
 
 		if verbose:
 			print "file created at %s" % fpath
-	
+
 	mlab.close()
 
 
-def plot_points3d(F, observable, frame_folder, output_animation_folder, 
-	file_type="png", vmin=None, vmax=None, cgif=True, cmovie=True, 
-	camera_distance=1.0, xlabel="x", ylabel="y", zlabel="z", title=None, 
+def plot_points3d(F, observable, frame_folder, output_animation_folder,
+	file_type="png", vmin=None, vmax=None, cgif=True, cmovie=True,
+	camera_distance=1.0, xlabel="x", ylabel="y", zlabel="z", title=None,
 	figsize=(640, 640), verbose=False, use_scale_factor=False):
 	"""
 	Function for plotting points3d of the field.
@@ -565,6 +572,7 @@ def plot_points3d(F, observable, frame_folder, output_animation_folder,
 		cgif: bool if we are to create a gif.
 		cmovie: bool if we are to create a movie.
 	"""
+	raise DeprecationWarning(__name__)
 
 	mlab.figure(size=figsize)
 
@@ -572,14 +580,15 @@ def plot_points3d(F, observable, frame_folder, output_animation_folder,
 		factor = 1
 	else:
 		factor = 100
-	
+
 	F *= factor
-	const = 0.25 # Lower limit on spheres
+	const = 0.25  # Lower limit on spheres
 
 	for it in xrange(n_time_points):
 		mlab.clf()
 
-		mlab.points3d(F[:,:,:,it], vmin=vmin*factor, vmax=vmax*factor, scale_factor=scale_factor, scale_mode="scalar")
+		mlab.points3d(F[:, :, :, it], vmin=vmin*factor, vmax=vmax *
+		              factor, scale_factor=scale_factor, scale_mode="scalar")
 
 		mlab.scalarbar(title="")
 		mlab.title(title[observable] + ", t=%d" % it, size=0.4, height=0.94)
@@ -590,15 +599,17 @@ def plot_points3d(F, observable, frame_folder, output_animation_folder,
 		if not use_scale_factor:
 			scale_factor = 1.0
 		else:
-			scale_factor = (np.min(F[:,:,:,it]) - vmin) / (vmax - vmin) * (1 - const)  + const
+			scale_factor = (np.min(F[:, :, :, it]) - vmin) / \
+			                (vmax - vmin) * (1 - const) + const
 
 		mlab.view(45, 70, distance=np.sqrt(N**3)*camera_distance,
 				focalpoint=(N/2.0, N/2.0, N/2.0))
 
-		fpath = os.path.join(self.frame_folder, "points3d_t%02d.%s" % (it, file_type))
-		
+		fpath = os.path.join(
+		    self.frame_folder, "points3d_t%02d.%s" % (it, file_type))
+
 		mlab.savefig(fpath, figure=f)
-		
+
 		if verbose:
 			print "file created at %s" % fpath
 
@@ -609,11 +620,9 @@ def main():
 	N_list = [24, 28, 32]
 	observable_list = ["energy", "topc"]
 	observable_list = ["topc"]
-	data_set_list = ["field_density_freq10_NF400_beta60", 
-        "field_density_freq10_NF400_beta61",
-        "field_density_freq10_NF400_beta62"]
+	data_set_list = [""]
 	camdist = 0.75
-	figure_size = (640, 640)
+	figure_size = (1280, 1280)
 
 	# N_list = [4]
 	# NT_list = [8]
@@ -628,11 +637,14 @@ def main():
 
 	# dataSetList = ["prodRunBeta6_0", "prodRunBeta6_1", "prodRunBeta6_2"] # redundant
 	dataSetList = ["field_density_freq10_NF400_beta60", 
-		"field_density_freq10_NF400_beta61",
-		"field_density_freq10_NF400_beta62"]
+				   "field_density_freq10_NF400_beta61",
+				   "field_density_freq10_NF400_beta62"]
 	# dataSetList = ["b60", "b61", "b62"]
+	dataSetList = [""]
 
-	base_path = "/Users/hansmathiasmamenvege/Programming/LQCD/GluonAction"
+	# base_path = "/Users/hansmathiasmamenvege/Programming/LQCD/GluonAction"
+	base_path = "/Users/hansmathiasmamenvege/Programming/LQCD/LatViz/input/"
+
 
 	# inputFolderLocation = "output" # redundant, use freq25(exact same data)
 	# inputFolderLocation = "scalar_fields_data/freq25"
