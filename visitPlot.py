@@ -48,6 +48,7 @@ def makeFrame(fileName, observable, outputFile, minVal, maxVal, colors,
     pixelSize   (int)    -> size of the output image in pixels, default=640
     colors      (list)   -> list of colors for palette
     '''
+
     # Open DataFile
     visit.OpenDatabase(fileName)
     
