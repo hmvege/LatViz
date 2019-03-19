@@ -80,13 +80,15 @@ def getSlice(folder, size, euclideanTime=0):
     read_out = proc.stdout.read()
 
     inputList = sorted(os.listdir(folder))
-    blockSize = size**3*8 + euclideanTime*size**3
+    blockSize = size**3*8
+    start=euclideanTime*blockSize
     blockNum = 0
 
     for file in inputList:
         if file.endswith(".bin"):
             with open(os.path.join(folder, file), "r") as fp:
                 # print folder + file
+                fp.seek(start)
                 block = fp.read(blockSize)
                 with open(os.path.join(
                         tempFolder,
@@ -191,7 +193,7 @@ def plotVisit(folder, typePlot, size, observable, minVal, maxVal,
     elif typePlot == "flow":
         parameters["files"] = getSlice(
             folder, size, euclideanTime=euclideanTime)
-        parameters["outputFile"] = "flowTime"
+        parameters["outputFile"] = "flowTime_TE%d" % euclideanTime
         pushToVisit(parameters, folder, visitBin, cleanUp)
     else:
         raise KeyError(("{0:s} not an recognized argument"
@@ -287,8 +289,8 @@ def main():
                        # Topological charge settings
                        32,                # size of lattice
                        "topc",            # observable type
-                       -0.0005,            # min value of the scale
-                       0.0005,             # max value of the scale
+                       -0.0001,            # min value of the scale
+                       0.0001,             # max value of the scale
 
 
                        visitBin,          # Binary location of Visit
