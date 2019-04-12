@@ -289,12 +289,12 @@ def main():
                        # Topological charge settings
                        32,                # size of lattice
                        "topc",            # observable type
-                       -0.0001,            # min value of the scale
-                       0.0001,             # max value of the scale
+                       -0.001,            # min value of the scale
+                       0.001,             # max value of the scale
 
 
                        visitBin,          # Binary location of Visit
-                       euclideanTime=27,  # Euclidean time slice for flow
+                       euclideanTime=59,  # Euclidean time slice for flow
                        NContours=10,      # number of contours
                        pixelSize=1280,     # image size in pixels
                        transparency=75,   # alpha channel (0-255)
