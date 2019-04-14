@@ -26,6 +26,9 @@ def create_animation(frame_folder, animation_folder, observable, time_point,
         AssertionError: if anim_type is not recognized.
     """
 
+    # Removes spaces
+    observable = observable.replace(" ", "_")
+
     # Creates temporary, hidden, folder
     frame_folder = os.path.join(frame_folder, __TMP_FIG_FOLDER)
 
@@ -134,7 +137,7 @@ def plot_iso_surface(field, observable_name, frame_folder,
     # Makes sure we do not show figure
     mlab.options.offscreen = True
 
-    f = mlab.figure(size=figsize, bgcolor=(0.9, 0.9, 0.9), fgcolor=(1, 1, 1))
+    f = mlab.figure(size=figsize, bgcolor=(0.9, 0.9, 0.9), fgcolor=(0, 0, 0))
 
     # Render options
     f.scene.render_window.point_smoothing = True
@@ -158,7 +161,7 @@ def plot_iso_surface(field, observable_name, frame_folder,
         mlab.scalarbar(title="Contour", orientation="vertical")
         mlab.title(title + "t=%03d" % it, size=0.4, height=0.94)
 
-        ax = mlab.axes(figure=f, nb_labels=6)
+        ax = mlab.axes(figure=f, nb_labels=5)
 
         mlab.xlabel(xlabel)
         mlab.ylabel(ylabel)
@@ -372,7 +375,7 @@ def main():
                      file_type=args.file_type, vmin=args.vmin, vmax=args.vmax,
                      n_contours=args.n_contours,
                      camera_distance=args.camera_distance, xlabel="x",
-                     ylabel="y", zlabel="z", title=None,
+                     ylabel="y", zlabel="z", title=args.observable,
                      figsize=args.figsize, verbose=args.verbose)
 
     create_animation(args.figures_folder, args.animation_folder,
