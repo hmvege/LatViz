@@ -7,6 +7,9 @@ from mayavi import mlab
 import argparse
 
 
+__TMP_FIG_FOLDER = ".fig"
+
+
 def create_animation(frame_folder, animation_folder, observable, time_point,
                      method, anim_type, frame_rate=10, verbose=True):
     """
@@ -22,17 +25,9 @@ def create_animation(frame_folder, animation_folder, observable, time_point,
     Raises:
         AssertionError: if anim_type is not recognized.
     """
-    # Updates data folder
-    frame_folder = os.path.join(frame_folder, "tmp")
 
-    # size = figsize
-    def _get_size(folder, fpath):
-        size = pltimg.imread(os.path.join(folder, fpath)).shape[:2]
-        _return_size = [size[0], size[1]]
-        for i, s in enumerate(size):
-            if s % 2 != 0:
-                _return_size[i] = s + 1
-        return _return_size[::-1]
+    # Creates temporary, hidden, folder
+    frame_folder = os.path.join(frame_folder, __TMP_FIG_FOLDER)
 
     input_paths = os.path.join(frame_folder, "iso_surface_t%02d.png")
 
@@ -67,6 +62,19 @@ def create_animation(frame_folder, animation_folder, observable, time_point,
     read_out = proc.stdout.read()
 
     print("Animation %s created." % animation_path)
+
+    # removing figures + tmp folder
+    if verbose:
+        print("Cleaning up:")
+    for _f in sorted(os.listdir(frame_folder)):
+        _p = os.path.join(frame_folder, _f)
+        os.remove(_p)
+        if verbose:
+            print("> rm {}".format(_p))
+
+    os.rmdir(frame_folder)
+    if verbose:
+        print("> rmdir {}".format(frame_folder))
 
 
 def check_folder(folder, dryrun=False, verbose=False):
@@ -103,7 +111,7 @@ def plot_iso_surface(field, observable_name, frame_folder,
     check_folder(frame_folder, dryrun=False, verbose=verbose)
 
     # Creates temporary folder for figures
-    frame_folder = os.path.join(frame_folder, "tmp")
+    frame_folder = os.path.join(frame_folder, __TMP_FIG_FOLDER)
     check_folder(frame_folder, dryrun=False, verbose=verbose)
 
     NT, N = field.shape[:2]
@@ -126,7 +134,7 @@ def plot_iso_surface(field, observable_name, frame_folder,
     # Makes sure we do not show figure
     mlab.options.offscreen = True
 
-    f = mlab.figure(size=figsize, bgcolor=(0.8, 0.8, 0.8), fgcolor=(1, 1, 1))
+    f = mlab.figure(size=figsize, bgcolor=(0.9, 0.9, 0.9), fgcolor=(1, 1, 1))
 
     # Render options
     f.scene.render_window.point_smoothing = True
@@ -149,6 +157,9 @@ def plot_iso_surface(field, observable_name, frame_folder,
 
         mlab.scalarbar(title="Contour", orientation="vertical")
         mlab.title(title + "t=%03d" % it, size=0.4, height=0.94)
+
+        ax = mlab.axes(figure=f, nb_labels=6)
+
         mlab.xlabel(xlabel)
         mlab.ylabel(ylabel)
         mlab.zlabel(zlabel)
@@ -160,8 +171,6 @@ def plot_iso_surface(field, observable_name, frame_folder,
 
         if verbose:
             tqdm.write("file created at %s" % fpath)
-
-        # mlab.show()
 
     mlab.close()
 
@@ -278,14 +287,14 @@ def main():
     # create_animation(figure_folder, animation_folder, observable, time_point,
     #                  method, anim_type)
 
-    ######## Initiating command line parser ########
+    # Initiating command line parser
     description_string = \
         '''Program for loading configurations and creating animations.'''
 
     parser = argparse.ArgumentParser(
         prog='LatViz', description=description_string)
 
-    ######## Prints program version if prompted ########
+    # Basic commands
     parser.add_argument('--version', action='version', version='%(prog)s 1.0')
     parser.add_argument('--dryrun', default=False, action='store_true',
                         help='Dryrun to not perform any critical actions.')
@@ -343,12 +352,17 @@ def main():
 
     args = parser.parse_args()
 
+    # Sets up Euclidean time
     if not isinstance(args.eucl, type(None)):
         time_point = args.eucl
         method = "eucl"
     else:
         time_point = args.flow
         method = "flow"
+
+    assert (len(args.figsize) == 2) and (type(args.figsize[0]) == int) \
+        and (type(args.figsize[1]) == int), \
+        "incorrect figsize: {}".format(figsize)
 
     data = load_folder_data(args.folder, args.N, args.NT,
                             euclidean_time=args.eucl,
