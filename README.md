@@ -6,7 +6,7 @@ Two methods exist for visualizing Gluonic fields, one with [Visit](https://wci.l
 This project was created by [hmvege](http://github.com/hmvege) and [giopede](http://github.com/giopede).
 
 <p align="center">
-    <img src="figures/Topological_charge_flow_t400.gif" alt="Topological charge of the gauge field" width="600"/>
+    <img src="figures/topological_charge_flow_t400.gif" alt="Topological charge of the gauge field" width="600"/>
 </p>
     
 <p align="center">
