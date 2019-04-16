@@ -36,7 +36,7 @@ Using the configuration
 ```
 example_data/field_density_b62_b6.200000_N32_NT64_np512_config00800.bin
 ```
-we can test that we get the gif [energy_flow_t800.gif](https://github.com/hmvege/LatViz/figures/energy_flow_t800.gif) by running the command
+we can test that we get the gif [energy_flow_t800.gif](https://github.com/hmvege/LatViz/blob/master/figures/energy_flow_t800.gif) by running the command
 ```
 python LViz.py example_data 32 64 -flow 800 -obs "Energy" --title "Energy density" -nc 15 -vmax 0.1 -vmin 0.001 --correction_factor -0.015625
 ```
