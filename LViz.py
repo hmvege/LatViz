@@ -35,7 +35,7 @@ def create_animation(frame_folder, animation_folder, observable, time_point,
     input_paths = os.path.join(frame_folder, "iso_surface_t%02d.png")
 
     animation_path = os.path.join(animation_folder, '%s_%s_t%d.%s' % (
-        observable, method, time_point, anim_type))
+        observable.lower(), method, time_point, anim_type))
 
     if anim_type == "gif":
         cmd = ['convert', '-delay', '1', '-loop',
@@ -46,10 +46,6 @@ def create_animation(frame_folder, animation_folder, observable, time_point,
                '-i', input_paths, '-c:v', 'libx264', '-crf', '0', '-preset',
                'veryslow', '-c:a', 'libmp3lame', '-b:a', '320k', '-y',
                animation_path]
-
-        # For converting to a good format:
-        # ffmpeg -i energy_iso_surface_t1000.mp4 -pix_fmt
-        # yuv420p -crf 18 energy_iso_surface_t1000_good.mp4
 
     elif anim_type == "avi":
         cmd = ['ffmpeg', '-r', str(frame_rate), '-i', input_paths, '-y',
@@ -92,7 +88,8 @@ def check_folder(folder, dryrun=False, verbose=False):
 def plot_iso_surface(field, observable_name, frame_folder,
                      file_type="png", vmin=None, vmax=None, n_contours=30,
                      camera_distance=0.65, xlabel="x", ylabel="y", zlabel="z",
-                     title=None, figsize=(1280, 1280), verbose=False):
+                     title=None, figsize=(1280, 1280), 
+                     correction_factor=None, verbose=False):
     """
     Function for plotting iso surfaces and animate the result.
 
@@ -106,6 +103,8 @@ def plot_iso_surface(field, observable_name, frame_folder,
         vmax: float upper cutoff value of the field. Default is None.
         n_contours: optional integer argument for number of contours.
             Default is 15.
+        correction_factor: optional, default None. Will correct plot values 
+            with correction_factor.
         verbose: default is False
     """
 
@@ -119,7 +118,14 @@ def plot_iso_surface(field, observable_name, frame_folder,
 
     NT, N = field.shape[:2]
 
-    if title != None:
+    if not isinstance(correction_factor, type(None)):
+        assert isinstance(correction_factor, float), \
+            "Correction factor is not of type float: {} type: {}".format(
+                correction_factor, type(correction_factor))
+
+        field *= correction_factor
+
+    if not isinstance(title, type(None)):
         title += ", "
     else:
         title = ""
@@ -148,6 +154,8 @@ def plot_iso_surface(field, observable_name, frame_folder,
     for it in tqdm(range(NT), desc="Rendering {}".format(observable_name)):
         mlab.clf(figure=f)
 
+        # print (np.min(field[it]), np.max(field[it]))
+
         source = mlab.pipeline.scalar_field(field[it], figure=f)
         mlab.pipeline.iso_surface(source, vmin=vmin, vmax=vmax,
                                   contours=contour_list, reset_zoom=False,
@@ -160,7 +168,7 @@ def plot_iso_surface(field, observable_name, frame_folder,
         # mlab.draw(f)
 
         mlab.scalarbar(title="Contour", orientation="vertical")
-        mlab.title(title + "t=%03d" % it, size=0.4, height=0.94)
+        mlab.title(title + "t=%02d" % it, size=0.4, height=0.94)
 
         # Sets ticks on axis
         ax = mlab.axes(figure=f, nb_labels=5)
@@ -248,7 +256,14 @@ def load_folder_data(folder, N, NT, euclidean_time=None, flow_time=None):
             else:
                 return False
 
-        folder_files = list(filter(_flow_time_filter, folder_files))
+        _tmp_folder_files = list(filter(_flow_time_filter, folder_files))
+
+        if len(_tmp_folder_files) == 0:
+            raise IOError("No flow data with flow time {0:} found among"
+                          " following files: \n{1}".format(
+                              flow_time, ", ".join(folder_files)))
+
+        folder_files = _tmp_folder_files
 
     # Loading data
     for _f in tqdm(folder_files,
@@ -322,6 +337,11 @@ def main():
     parser.add_argument("-fr", "--frame_rate", default=10, type=int,
                         help="Frame rate.")
 
+    # In case field input is bad and needs to be modified.
+    parser.add_argument("--correction_factor", default=None, type=float,
+                        help=("If provided, will correct input "
+                              "values with factor."))
+
     # Forcing using to specify either flow or euclidean time
     anim_time_group = parser.add_mutually_exclusive_group(required=True)
     anim_time_group.add_argument(
@@ -344,6 +364,9 @@ def main():
         and (type(args.figsize[1]) == int), \
         "incorrect figsize: {}".format(figsize)
 
+    assert args.vmin < args.vmax, \
+        "vmin is less than vmax: {} < {}".format(args.vmin, args.vmax)
+
     data = load_folder_data(args.folder, args.N, args.NT,
                             euclidean_time=args.eucl,
                             flow_time=args.flow)
@@ -353,7 +376,9 @@ def main():
                      n_contours=args.n_contours,
                      camera_distance=args.camera_distance, xlabel="x",
                      ylabel="y", zlabel="z", title=args.observable,
-                     figsize=args.figsize, verbose=args.verbose)
+                     figsize=args.figsize, 
+                     correction_factor=args.correction_factor,
+                     verbose=args.verbose)
 
     create_animation(args.figures_folder, args.animation_folder,
                      args.observable, time_point, method, args.anim_type,
