@@ -1,6 +1,18 @@
 # LatViz
+A small command line interface for visualizing gauge field configurations.
 
-A program containing two methods for visualizing Gluonic fields, one with [Visit](https://wci.llnl.gov/simulation/computer-codes/visit) and one with [Mayavi](http://docs.enthought.com/mayavi/mayavi/).
+Two methods exist for visualizing Gluonic fields, one with [Visit](https://wci.llnl.gov/simulation/computer-codes/visit) and one with [Mayavi](http://docs.enthought.com/mayavi/mayavi/), although the former is on a seperate branch.
+
+This project was created by @hmvege and @giopede.
+
+<p align="center">
+    <img src="figures/Topological_charge_flow_t400.gif" alt="Topological charge of the gauge field" width="600"/>
+</p>
+    
+<p align="center">
+    <i>The topological charge of a gauge field.</i>
+</p>
+
 
 ## Installing
 First, set up a clean conda environment for Python 3,
