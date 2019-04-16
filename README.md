@@ -3,7 +3,7 @@ A small command line interface for visualizing gauge field configurations.
 
 Two methods exist for visualizing Gluonic fields, one with [Visit](https://wci.llnl.gov/simulation/computer-codes/visit) and one with [Mayavi](http://docs.enthought.com/mayavi/mayavi/), although the former is on a seperate branch.
 
-This project was created by [hmvege](http://github.com/hmvege) and [giopede]((http://github.com/giopede).
+This project was created by [hmvege](http://github.com/hmvege) and [giopede](http://github.com/giopede).
 
 <p align="center">
     <img src="figures/Topological_charge_flow_t400.gif" alt="Topological charge of the gauge field" width="600"/>
