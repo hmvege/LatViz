@@ -91,7 +91,7 @@ def check_folder(folder, dryrun=False, verbose=False):
 
 def plot_iso_surface(field, observable_name, frame_folder,
                      file_type="png", vmin=None, vmax=None, n_contours=30,
-                     camera_distance=0.7, xlabel="x", ylabel="y", zlabel="z",
+                     camera_distance=0.65, xlabel="x", ylabel="y", zlabel="z",
                      title=None, figsize=(1280, 1280), verbose=False):
     """
     Function for plotting iso surfaces and animate the result.
@@ -153,6 +153,7 @@ def plot_iso_surface(field, observable_name, frame_folder,
                                   contours=contour_list, reset_zoom=False,
                                   opacity=0.5, figure=f)
 
+        # Adjusts camera view
         mlab.view(45, 70, distance=np.sqrt(N**3)*camera_distance,
                   focalpoint=(N/2.0, N/2.0, N/2.0), figure=f)
 
@@ -161,11 +162,15 @@ def plot_iso_surface(field, observable_name, frame_folder,
         mlab.scalarbar(title="Contour", orientation="vertical")
         mlab.title(title + "t=%03d" % it, size=0.4, height=0.94)
 
+        # Sets ticks on axis
         ax = mlab.axes(figure=f, nb_labels=5)
 
         mlab.xlabel(xlabel)
         mlab.ylabel(ylabel)
         mlab.zlabel(zlabel)
+
+        # Creates outline of box
+        mlab.outline()
 
         fpath = os.path.join(
             frame_folder, "iso_surface_t%02d.%s" % (it, file_type))
@@ -262,34 +267,6 @@ def load_folder_data(folder, N, NT, euclidean_time=None, flow_time=None):
 
 
 def main():
-    # N = 32
-    # NT = 64
-    # euclidean_time = 1
-    # flow_time = None
-    # file_folders = "input/topc"
-    # figure_folder = "figures/"
-    # animation_folder = "animations/"
-    # observable = "topc"
-
-    # if not isinstance(euclidean_time, type(None)):
-    #     time_point = euclidean_time
-    #     method = "euclidean"
-    # else:
-    #     time_point = euclidean_time
-    #     method = "euclidean"
-
-    # anim_type = "gif"
-    # file_type = "png"
-
-    # data = load_folder_data(file_folders, N, NT,
-    #                         euclidean_time=euclidean_time,
-    #                         flow_time=flow_time)
-
-    # plot_iso_surface(data, observable, figure_folder)
-
-    # create_animation(figure_folder, animation_folder, observable, time_point,
-    #                  method, anim_type)
-
     # Initiating command line parser
     description_string = \
         '''Program for loading configurations and creating animations.'''
@@ -335,7 +312,7 @@ def main():
     parser.add_argument("-nc", "--n_contours", default=20, type=int,
                         help="Number of contours to use.")
     parser.add_argument(
-        "--camera_distance", default=0.7, type=float,
+        "--camera_distance", default=0.65, type=float,
         help="Camera distance to cube. Smaller values means closer.")
     parser.add_argument("--title", default=None, type=str,
                         help="Title of figure.")
