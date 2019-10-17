@@ -16,119 +16,102 @@ def make_video_and_gif(folder, outFileName, avi=True, gif=True):
     
     # Create mp4 file
     if avi:
-        cmd = 'ffmpeg -r 8 -i ' + folder + ' temp/%03d.png qscale:v 0 -y ' + outFileName + '.avi'
+        cmd = 'ffmpeg -r 8 -i ' + folder + '/temp/%03d.png qscale:v 0 -y ' + outFileName + '.avi'
         os.system(cmd)
     
     # Create gif file
     if gif:
-        cmd = 'convert -delay 10 -loop 0 ' + folder + ' temp/*.png ' + outFileName +'.gif'
+        cmd = 'convert -delay 10 -loop 0 ' + folder + '/temp/*.png ' + outFileName +'.gif'
         os.system(cmd)
 
 class Contour3DFrame:
-    def __init__(self):
+    def __init__(self, params):
+
+        self.params = params
+        
+        # Set Plot Title
+        if not self.params["plotTitle"]:
+            if self.params["observable"] == "energy":
+                self.params["plotTitle"] = "Energy Density"
+            elif self.params["observable"] == "topc":
+                self.params["plotTitle"] = "Topological Charge"
         pass
 
-def makeFrame(fileName, observable, outputFile, minVal, maxVal, colors, 
-              NContours=15, plotTitle=None, pixelSize=640):
-    '''
-    Function makeFrame:
-    creates a frame given a sub-block of the lattice. Uses Visit to set view, 
-    colorscheme and saves the frame in the temp folder.
-
-    Parameters:
-    fileName    (string) -> path to the sub-block .bov file
-    outputFile  (string) -> the name of the output .png file
-    observable  (string) -> either "energy" or "topc", used to set the scale 
-                            and the title
-    minVal      (float)  -> the minimum value of the scale to use
-    maxVal      (float)  -> the maximum value of the scale to use
-    NContours   (int)    -> the number of contour surfaces to draw default=15
-    plotTitle   (string) -> title for the plot default is observable name
-    pixelSize   (int)    -> size of the output image in pixels, default=640
-    colors      (list)   -> list of colors for palette
-    '''
-
-    # Open DataFile
-    visit.OpenDatabase(fileName)
-    
-    # Set Plot Title
-    if not plotTitle:
-        if observable == "energy":
-            plotTitle = "Energy Density"
-        elif observable == "topc":
-            plotTitle = "Topological Charge"
-    
-
-    # Draw Contour Plot
-    if observable == "energy":
-        visit.DefineScalarExpression("scaledField", "field/(-64)")
-        visit.AddPlot("Contour", "scaledField")
-        p = visit.ContourAttributes()
-        p.scaling = 1 # logscale
+    def draw(self, fileName):
+        # Open DataFile
+        vs.OpenDatabase(fileName)
         
-    elif observable == "topc":
-        visit.AddPlot("Contour", "field")
-        p = visit.ContourAttributes()
-        p.scaling = 0 # logscale
+        # Draw Contour Plot
+        p = vs.ContourAttributes()
+        if self.params["observable"] == "energy":
+            vs.DefineScalarExpression("scaledField", "(-1)*field")
+            vs.AddPlot("Contour", "scaledField")
+            p.scaling = 1 # logscale
+            
+        elif self.params["observable"] == "topc":
+            vs.AddPlot("Contour", "field")
+            p = visit.ContourAttributes()
+            p.scaling = 0 # logscale
 
-    # Set min and max values
-    p.min = minVal
-    p.max = maxVal
-    p.minFlag = 1
-    p.maxFlag = 1
-    p.contourNLevels = NContours
-    
-    # Define Color Scheme 
-    for i, color in enumerate(colors):
-        p.SetMultiColor(i, tuple(color))
-    p.colorType = 1
-    visit.SetPlotOptions(p)
+        # Set min and max values
+        p.min = self.params["minValue"]
+        p.max = self.params["maxValue"]
+        p.minFlag = 1
+        p.maxFlag = 1
+        p.contourNLevels = self.params["NContours"]
+        
+        # Define Color Scheme 
+        for i, color in enumerate(self.params["palette"]):
+            p.SetMultiColor(i, tuple(color))
+        p.colorType = 1
+        vs.SetPlotOptions(p)
 
-    # Title
-    plottitle=visit.CreateAnnotationObject("Text2D")
-    plottitle.position=(0.35,0.91)
-    plottitle.fontFamily = plottitle.Times
-    plottitle.text=plotTitle
+        
+        # Title
+        title = vs.CreateAnnotationObject("Text2D")
+        title.position = (0.35,0.91)
+        title.fontFamily = title.Times
+        title.text = self.params["plotTitle"]
 
-    # Figure Dimension and Parameters
-    s = visit.SaveWindowAttributes()
-    s.format = s.PNG
-    s.outputDirectory = ""
-    s.width, s.height = (pixelSize,pixelSize)
-    s.resConstraint = s.EqualWidthHeight
-    s.screenCapture = 0
-    s.family = 0
-    s.fileName = outputFile
-    visit.SetSaveWindowAttributes(s)
+        # Figure Dimension and Parameters
+        s = vs.SaveWindowAttributes()
+        s.format = s.PNG
+        s.outputDirectory = ""
+        s.width, s.height = (self.params["pixelSize"], self.params["pixelSize"])
+        s.resConstraint = s.EqualWidthHeight
+        s.screenCapture = 0
+        s.family = 0
+        s.fileName = self.params["outputFile"]
+        vs.SetSaveWindowAttributes(s)
 
-    # View Angle
-    visit.ResetView()
-    v = visit.GetView3D()
-    v.viewNormal = (-0.505893, 0.32034, 0.800909)
-    v.viewUp = (0.1314, 0.946269, -0.295482)
-    v.parallelScale = 14.5472
-    v.nearPlane = -34.641
-    v.farPlane = 34.641
-    v.perspective = 1
-    visit.SetView3D(v) 
+        # View Angle
+        vs.ResetView()
+        v = vs.GetView3D()
+        v.viewNormal = (-0.505893, 0.32034, 0.800909)
+        v.viewUp = (0.1314, 0.946269, -0.295482)
+        v.parallelScale = 14.5472
+        v.nearPlane = -34.641
+        v.farPlane = 34.641
+        v.perspective = 1
+        vs.SetView3D(v) 
 
-    # Set Background
-    a = visit.AnnotationAttributes()
-    a.backgroundColor = (192,192,192, 0)
-    visit.SetAnnotationAttributes(a)
-    
-    # Antialiasing
-    r = visit.RenderingAttributes()
-    r.antialiasing = 1
-    visit.SetRenderingAttributes(r)    
+        # Set Background
+        a = vs.AnnotationAttributes()
+        a.backgroundColor = (192,192,192, 0)
+        vs.SetAnnotationAttributes(a)
+        
+        # Antialiasing
+        r = vs.RenderingAttributes()
+        r.antialiasing = 1
+        vs.SetRenderingAttributes(r)    
 
-    # Draw
-    visit.DrawPlots()
-    visit.SaveWindow()
+        # Draw
+        vs.DrawPlots()
+        vs.SaveWindow()
 
-    # Close Files
-    visit.DeleteAllPlots()
-    visit.CloseDatabase(fileName)
+        # Close Files
+        vs.DeleteAllPlots()
+        vs.CloseDatabase(fileName)
 
 def plotConf(folder, files, size, observable, outpuFileName, 
              minVal, maxVal, colors, NContours=15, pixelSize=640, 
@@ -163,26 +146,3 @@ def plotConf(folder, files, size, observable, outpuFileName,
     # Make Video
     if avi or gif:
         makeVideoAndGif(folder, folder + outpuFileName, avi=avi, gif=gif)
-    
-
-if __name__ == "__main__":
-    with open(sys.argv[1], "r") as jsonParams:
-        params = json.load(jsonParams)
-
-    # Plot
-    plotConf(params["folder"],       # path fo .bin folder
-             params["files"],        # the .bov file
-             params["size"],         # size of lattice
-             params["observable"],   # observable type
-             params["outputFile"],   # outputfile name
-             params["minValue"],     # min value of the scale
-             params["maxValue"],     # max value of the scale
-             params["palette"],      # color palette liste
-             params["NContours"],    # number of contours
-             params["pixelSize"],    # image size in pixels
-             params["avi"],          # avi output
-             params["gif"],          # gif output
-             params["plotTitle"]     # title (default is the observable)
-            )
-
-    exit()

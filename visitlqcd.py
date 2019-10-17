@@ -1,6 +1,6 @@
 import os as os
 from colour import Color
-from visitframes import Contour3DFrame
+from visitframes import Contour3DFrame, make_video_and_gif
 
 def split_file(folder, inputConf, size):
     '''
@@ -177,7 +177,8 @@ def plot_visit(folder, typePlot, size, observable, minVal, maxVal,
     parameters["gif"] = gif
     parameters["plotTitle"] = plotTitle
     parameters["palette"] = color_palette(NContours, transparency=transparency)
-
+    import visit as vs
+    vs.LaunchNowin()
     # Split the file into sub-blocks
     if typePlot == "euclidean":
         inputList = sorted(os.listdir(folder))
@@ -185,13 +186,15 @@ def plot_visit(folder, typePlot, size, observable, minVal, maxVal,
             if file.endswith(".bin"):
                 parameters["files"] = split_file(folder, file, size)
                 parameters["outputFile"] = file[:-4]
-                frame = Contour3DFrame(parameters)
-                frame.draw()
-                frame.save()
+                for i, file in enumerate(parameters["files"]):
+                    parameters["outputFile"] = folder + "/temp/" + str(i).zfill(3)
+                    frame = Contour3DFrame(parameters)
+                    frame.draw(file)
+                make_video_and_gif(folder, 'euclidean')
+
     elif typePlot == "flow":
         parameters["files"] = get_euclidean_slice(
             folder, size, euclideanTime=euclideanTime)
         parameters["outputFile"] = "flowTime_TE%d" % euclideanTime
         frame = Contour3DFrame(parameters)
         frame.draw()
-        frame.save()
