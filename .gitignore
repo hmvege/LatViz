@@ -2,6 +2,14 @@
 .DS_Store
 .vscode/*
 
+# Various
+.eggs/
+latviz.egg-info/
+
+# Various dev files
+requirements-*.txt
+init_env.sh
+
 # Visit log
 visitlog.py
 
@@ -23,3 +31,6 @@ input/*
 animations/
 array_source.py.bak
 configurations_data
+
+# Virtual env
+venv*
