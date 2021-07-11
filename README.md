@@ -85,7 +85,9 @@ where `--correction_factor` adds a normalization correction `-1/64` to the field
 ### Animating a series of configurations at a specified time slice
 An example using of an animation using a set of enumerated configurations. In this case, the application of [gradient flow](https://link.springer.com/article/10.1007/JHEP08(2010)071).
 
-
+```
+latviz *.bin -n 32 -nt 64 --flow 800 -m "Energy" --title "Energy density" --ncontours 15 --vmax 0.1 --vmin 0.001 --correction-factor -0.015625
+```
 
 ## Testing
 

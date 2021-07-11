@@ -117,7 +117,7 @@ def load_folder_data(
         flow_time is None
     ), "Either choose Euclidean time of Flow time"
 
-    folder_files = folder.glob("*.bin")
+    folder_files = sorted(folder.glob("*.bin"))
 
     data = []
 

@@ -11,6 +11,7 @@ from latviz import utils
 
 # TODO: write issue on problem of value outside vmin/vmax.
 # TODO: add better messages
+# TODO: fix avi and mp4 options to properly center the camera.
 
 
 # Future ideas:
