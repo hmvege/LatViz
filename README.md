@@ -33,7 +33,7 @@ pyenv activate python3.6.14
 ```
 
 #### Virtual env `venv`
-Assuming a virtual environment `venv` is created using Python 3.6.14,
+Assuming Python 3.6.14 is being used, we create the virtual environment `venv` by,
 ```bash
 python -m venv venv
 source venv/bin/activate
@@ -42,8 +42,6 @@ source venv/bin/activate
 ### Animation backends
 #### ffmpeg
 [ffmpeg](https://ffmpeg.org) is needed in order to create the `avi` and `mp4` animations.
-
-##### Install for MacOS
 ```bash
 brew install ffmpeg
 ```
