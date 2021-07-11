@@ -2,12 +2,23 @@
 .DS_Store
 .vscode/*
 
+# Various
+.eggs/
+latviz.egg-info/
+
+# Various dev files
+requirements-*.txt
+init_env.sh
+
 # Visit log
 visitlog.py
 
 # Temporary folders
 a/*
 c/*
+
+# Scratch and prototyping
+scratch
 
 # Input folders
 input/*
@@ -19,7 +30,17 @@ input/*
 # Python binaries
 *.pyc
 
+# Sublime project files
+*.sublime-*
+
 # Animation folder
 animations/
+animation_*
 array_source.py.bak
 configurations_data
+
+# Data
+old_data
+
+# Virtual env
+venv*
