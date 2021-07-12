@@ -3,7 +3,6 @@ click==8.0.1
 configobj==5.0.6
 envisage==4.7.1
 importlib-metadata==4.6.1
--e git+git@github.com:hmvege/LatViz.git@79e6e33575fdd0a6f609228e031ed7bf630e25bd#egg=latviz
 mayavi==4.6.2
 numpy==1.19.5
 pyface==6.0.0
