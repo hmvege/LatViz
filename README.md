@@ -15,6 +15,8 @@ This project was created by [hmvege](http://github.com/hmvege) and [giopede](htt
     <i>The topological charge of a gauge field.</i>
 </p>
 
+**NOTE: code works on MacOS 11.4, but yet to be tested on other systems**
+
 ## Installation
 
 ### The Python environment
