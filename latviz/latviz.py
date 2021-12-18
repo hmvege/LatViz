@@ -1,46 +1,34 @@
 import subprocess
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
-from mayavi import mlab
+import pyvista as pv
+from loguru import logger
 from tqdm import tqdm
-
-from latviz import utils
-
-
-# TODO: write issue on problem of value outside vmin/vmax.
-# TODO: add better messages
-# TODO: fix avi and mp4 options to properly center the camera.
-
-
-# Future ideas:
-# - allow for user specified camera and scene settings(.json or .yaml?)
 
 
 def create_animation(
     frame_folder: Path,
     animation_folder: Path,
     observable: str,
-    time_slice: int,
-    method: str,
     animation_type: str,
+    time_slice: Optional[int] = None,
     frame_rate: Optional[int] = 10,
-    verbose: Optional[bool] = False,
-):
+) -> None:
     """
-    Method for created gifs and movies from generated 3D figures.
+    Method for creating animations from generated volumetric figures.
 
     Args:
-        frame_folder: folder path to figures that will be be stiched together.
+        frame_folder: folder path to figures that will be be stitched together.
         animation_folder: folder path to place animations in.
-        observable: observable we are creating a gif or a movie for.
-        time_slice: eucl or flow time slice.
-        method: type of 3D plot.
-        animation_type: format of animation. Avaliable: 'gif', 'avi'
-        figsize: integer tuple of the figure size.
+        observable: observable we are creating an animation..
+        animation_type: format of animation. Available: 'gif', 'avi' or 'mp4'
+        time_slice: optional, eucl time slice.
+        frame_rate: frames per second of animation.
+
     Raises:
-        AssertionError: if animation_type is not recognized.
+        NameError: if animation_type is not recognized.
     """
 
     # Removes spaces
@@ -48,12 +36,16 @@ def create_animation(
 
     input_paths = frame_folder / "frame_t%02d.png"
 
-    animation_path = animation_folder / (
-        f"{observable.lower()}_{method}_{time_slice}d.{animation_type}"
-    )
+    if time_slice:
+        animation_path = animation_folder / (
+            f"{observable.lower()}_{time_slice}.{animation_type}"
+        )
+    else:
+        animation_path = animation_folder / (
+            f"{observable.lower()}.{animation_type}"
+        )
 
     if animation_type == "gif":
-        # TODO: add note of this in README.md
         cmd = [
             "convert",
             "-delay",
@@ -104,69 +96,51 @@ def create_animation(
             f"{animation_type} is not a recognized animation type."
         )
 
-    if verbose:
-        print(f"> {' '.join(cmd)}")
+    logger.info(f"Running command: {' '.join(cmd)}")
 
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     _ = proc.stdout.read()
 
-    print(f"Animation {animation_path} created.")
+    logger.success(f"Animation {animation_path} created.")
 
 
 def plot_iso_surface(
     field: np.ndarray,
     observable_name: str,
     frame_folder: Path,
-    file_type: str = "png",
     vmin: Optional[float] = None,
     vmax: Optional[float] = None,
-    n_contours: int = 30,
-    camera_distance: float = 0.65,
-    xlabel: str = "x",
-    ylabel: str = "y",
-    zlabel: str = "z",
+    n_contours: Optional[int] = 20,
+    camera_distance: Optional[float] = 1.0,
+    xlabel: Optional[str] = "x",
+    ylabel: Optional[str] = "y",
+    zlabel: Optional[str] = "z",
     title: Optional["str"] = None,
-    figsize: Tuple[int, int] = (1280, 1280),
-    correction_factor: Optional[float] = None,
-    verbose: bool = False,
+    figsize: Optional[tuple[int, int]] = (1280, 1280),
 ) -> None:
     """
-    Function for plotting iso surfaces and animate the result.
+    Function for creating figures of volumetric surfaces.
 
     Args:
         field: field array of size (N,N,N,NT) to plot. The number of
             points to animate over is always the last dimension.
         observable_name: str of observable_name we are plotting.
         frame_folder: location of where to temporary store frames.
-        file_type: string of file extension type. Default is 'png'.
-        vmin: float lower cutoff value of the field. Default is None.
-        vmax: float upper cutoff value of the field. Default is None.
+        vmin: float lower cutoff value of the field.
+        vmax: float upper cutoff value of the field.
         n_contours: optional integer argument for number of contours.
-            Default is 15.
-        correction_factor: optional, default None. Will correct plot values
-            with correction_factor.
-        verbose: default is False
+        camera_distance: scalar to multiple camera position by.
+        xlabel: x label.
+        ylabel: y label.
+        zlabel: z label.
+        title: title of figure.
+        figsize: shape of figure.
     """
 
-    assert isinstance(
-        observable_name, str
-    ), "Observable name must be string type"
-    utils.check_folder(frame_folder, dryrun=False, verbose=verbose)
+    frame_folder.mkdir(exist_ok=True)
+    logger.info(f"Folder created at {str(frame_folder)}")
 
-    NT, N = field.shape[:2]
-
-    if correction_factor is not None:
-        assert isinstance(correction_factor, float), (
-            f"Correction factor is not of type float: {correction_factor} "
-            f"type: {type(correction_factor)}"
-        )
-
-        field *= correction_factor
-
-    if title is not None:
-        title += ", "
-    else:
-        title = ""
+    n_frames, n, _, _ = field.shape
 
     if vmin is None:
         vmin = np.min(field)
@@ -174,66 +148,89 @@ def plot_iso_surface(
     if vmax is None:
         vmax = np.max(field)
 
+    if title is None and observable_name != "Observable":
+        title = observable_name
+
     # Sets up the contours
     contour_list = np.linspace(vmin, vmax, n_contours)
     contour_list = contour_list.tolist()
 
-    # Makes sure we do not show figure
-    mlab.options.offscreen = True
+    for it in tqdm(range(n_frames), desc=f"Rendering {observable_name}"):
 
-    f = mlab.figure(size=figsize, bgcolor=(0.9, 0.9, 0.9), fgcolor=(0, 0, 0))
+        p = pv.Plotter(window_size=figsize, off_screen=True)
+        p.enable_anti_aliasing()
+        p.set_background(color="#AFAFAF")
 
-    # Render options
-    f.scene.render_window.point_smoothing = True
-    f.scene.render_window.line_smoothing = True
-    f.scene.render_window.polygon_smoothing = True
-    f.scene.render_window.multi_samples = 8  # Try with 4 if this is slow
+        volume = field[it]
 
-    for it in tqdm(range(NT), desc=f"Rendering {observable_name}"):
-        mlab.clf(figure=f)
+        grid = pv.UniformGrid()
+        grid.dimensions = volume.shape
 
-        # print (np.min(field[it]), np.max(field[it]))
+        grid.point_data["values"] = volume.flatten(order="F")
+        contour = grid.contour(contour_list)
+        outline = grid.outline()
 
-        source = mlab.pipeline.scalar_field(field[it], figure=f)
-        mlab.pipeline.iso_surface(
-            source,
-            vmin=vmin,
-            vmax=vmax,
-            contours=contour_list,
-            reset_zoom=False,
-            opacity=0.5,
-            figure=f,
+        # Viable color maps:
+        # - viridis
+        # - plasma
+        # - Spectral
+        # - coolwarm
+        #
+        # More color maps seen at:
+        # https://matplotlib.org/stable/tutorials/colors/colormaps.html
+
+        p.add_mesh(outline, color="k")
+        p.add_mesh(
+            contour,
+            clim=[vmin, vmax],
+            cmap="plasma",
+            show_scalar_bar=True,
+            opacity=0.65,
+            scalar_bar_args={
+                "vertical": True,
+                "label_font_size": 20,
+                "title_font_size": 26,
+                "title": "",
+                "font_family": "times",
+                "fmt": "%.2e",
+                "position_y": 0.0125,
+            },
+        )
+        p.show_grid(
+            font_size=26,
+            font_family="times",
+            xlabel=xlabel,
+            ylabel=ylabel,
+            zlabel=zlabel,
+        )
+        pos = list(map(lambda f: f * camera_distance, p.camera.position))
+        p.set_position(pos)
+        p.camera.elevation = -2.5
+
+        p.add_text(
+            f"Frame: {it:-02d}",
+            font="times",
+            font_size=14,
+            position="upper_right",
+        )
+        p.add_text(
+            (
+                f"Avg={volume.mean():8.2e}\n"
+                f"Std={volume.std():8.2e}\n"
+                f"Min={volume.min():8.2e}\n"
+                f"Max={volume.max():8.2e}"
+            ),
+            font="times",
+            position="lower_left",
+            font_size=12,
         )
 
-        # Adjusts camera view
-        mlab.view(
-            45,
-            70,
-            distance=np.sqrt(N ** 3) * camera_distance,
-            focalpoint=(N / 2.0, N / 2.0, N / 2.0),
-            figure=f,
-        )
+        if title:
+            p.add_title(title, font="times")
 
-        # mlab.draw(f)
+        fpath = frame_folder / f"frame_t{it:02d}.png"
+        p.screenshot(fpath, return_img=False)
 
-        mlab.scalarbar(title="Contour", orientation="vertical")
-        mlab.title(title + f"t={it:02d}", size=0.4, height=0.94)
+        tqdm.write(f"file created at {fpath}")
 
-        # Sets ticks on axis
-        _ = mlab.axes(figure=f, nb_labels=5)
-
-        mlab.xlabel(xlabel)
-        mlab.ylabel(ylabel)
-        mlab.zlabel(zlabel)
-
-        # Creates outline of box
-        mlab.outline()
-
-        fpath = frame_folder / f"frame_t{it:02d}.{file_type}"
-
-        mlab.savefig(str(fpath), figure=f, magnification="auto", size=None)
-
-        if verbose:
-            tqdm.write(f"file created at {fpath}")
-
-    mlab.close()
+    logger.info("Figures created.")
