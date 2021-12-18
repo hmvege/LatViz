@@ -1,7 +1,7 @@
 # LatViz - Lattice Visualization
 A small command line interface for visualizing gauge field configurations.
 
-LatViz uses the [Mayavi](http://docs.enthought.com/mayavi/mayavi/) package as backbone for creating the frames, then the frames are stitched together using either [ImageMagick](https://imagemagick.org/index.php) or [ffmpeg](https://ffmpeg.org).
+LatViz uses [PyVista](https://docs.pyvista.org/index.html) as backbone for creating the frames, then the frames are stitched together using either [ImageMagick](https://imagemagick.org/index.php) or [ffmpeg](https://ffmpeg.org).
 
 There are two categories of animations which can be generated. One is from a single lattice configurations, the other is from a time series of configurations where a time slice has been specified.
 
@@ -15,86 +15,79 @@ This project was created by [hmvege](http://github.com/hmvege) and [giopede](htt
     <i>The topological charge of a gauge field.</i>
 </p>
 
-**NOTE: code works on MacOS 11.4, but yet to be tested on other systems**
-
 ## Installation
 
-### The Python environment
-First, set up a clean Python environment for Python 3.6 (the latest version currently tested is 3.6.14). Many methods exist, and use whatever method which is preferred,
+### Prerequisites
+Make sure following is installed,
 
-#### Conda
-```bash
-conda create -n env-latviz-py3.6.14 python=3.6.14
-conda activate env-latviz-py3.6.14
+- [ImageMagick](https://imagemagick.org/index.php) is needed in order to create the `avi` and `mp4` animations.
+- [ffmpeg](https://ffmpeg.org) is needed to create gifs.
+
+**MacOS**:
 ```
-
-#### PyEnv
-```bash
-pyenv virtualenv 3.6.14 python3.6.14
-pyenv activate python3.6.14
-```
-
-#### Virtual env `venv`
-Assuming Python 3.6.14 is being used, we create the virtual environment `venv` by,
-
-```bash
-python -m venv venv
-source venv/bin/activate
-```
-
-### Animation backends
-#### ffmpeg
-[ffmpeg](https://ffmpeg.org) is needed in order to create the `avi` and `mp4` animations.
-
-```bash
 brew install ffmpeg
-```
-
-#### ImageMagick
-[ImageMagick](https://imagemagick.org/index.php) is needed to create gifs.
-```bash
 brew install ImageMagick
 ```
 
-
-### Installing LatViz
-Install the required modules for Mayavi and any additional modules required,
-```bash
-pip install -r requirements.txt
+**Ubuntu**:
+```
+sudo apt update
+sudo apt install ffmpeg imagemagick
 ```
 
-Then, install the LatViz CLI,
-
+### Installation
+Ensure you have a clean Python `3.9>=` environment, then install by pip
 ```bash
-pip install -e .
+pip install latviz
 ```
+
+## User guide
+In its most basic usage, one needs to provide a file path to a binary file, spatial size of the hypercube, and the temporal size of the hyper cube(assuming shape of `(NT, N, N, N)`).
+```
+latviz path_to_field.bin -n spatial_size -nt temporal_size
+```
+If _multiple files_ are passed in, LatViz will treat this as a time series, and by default select the first temporal slice of each cube and plot that. To specify a time slice, pass the time slice to `-t` argument.
+
+For a full list of options, use `latviz --help`
+
+### Supported output formats
+LatViz supports three output formats,
+
+- `gif` (ImageMagick)
+- `avi` (ffmpeg)
+- `mp4` (ffmpeg)
 
 ## Examples
 
-changes.)
 ### Animating a single configuration
 Running
 ```
-latviz example_data -n 32 -nt 64 --flow 800 -m "Energy" --title "Energy density" --ncontours 15 --vmax 0.1 --vmin 0.001 --correction-factor -0.015625
+latviz example_data/field_density_b62_b6.200000_N32_NT64_np512_config00800.bin -n 32 -nt 64 -m "Energy density" -c 15 --vmax 0.1 --vmin 0.001  --keep-frames -a gif
 ```
 for the configuration of the energy density
 ```
 example_data/field_density_b62_b6.200000_N32_NT64_np512_config00800.bin
 ```
-where `--correction_factor` adds a normalization correction `-1/64` to the field configuration due to an error in field configuration, produces the figure
+produces the figure.
 
 <p align="center">
-    <img src="figures/energy_flow_t800.gif" alt="Topological charge of the gauge field" width="600"/>
+    <img src="figures/energy_flow_t800.gif" alt="Energy density of the gauge field" width="600"/>
 </p>
 
 ### Animating a series of configurations at a specified time slice
 An example using of an animation using a set of enumerated configurations. In this case, the application of [gradient flow](https://link.springer.com/article/10.1007/JHEP08(2010)071).
 
 ```
-latviz *.bin -n 32 -nt 64 --flow 800 -m "Energy" --title "Energy density" --ncontours 15 --vmax 0.1 --vmin 0.001 --correction-factor -0.015625
+latviz $(ls old_data/example_data/topc | xargs -I % greadlink -f old_data/example_data/topc/%) -n 32 -nt 64 -t 0 -m "Topological Charge" --title "Topological Charge" -c 15 --vmax 0.001 --vmin -0.001 --keep-frames -a gif
 ```
 
 ## Testing
+Unit testing done by using `pytest`.
 
+### Future ideas:
+* Allow for more animation configurations(e.g. camera and scene settings), by providing a config file(a .json or .yaml)?
 
 ## Troubleshooting
+If you encounter any issues, please report them in a issue, detailing run command, system, type of input data, and the stdout.
+
+Likewise, ff you have any suggestions, feel free to make an issue.

@@ -3,84 +3,32 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+from loguru import logger
 from tqdm import tqdm
-
-
-def check_folder(
-    folder: Path, dryrun: bool = False, verbose: bool = False
-) -> None:
-    """Verifies and creates folder if none exists.
-
-    Args:
-        folder (Path): Description
-        dryrun (bool, optional): Description
-        verbose (bool, optional): Description
-    """
-    # Checks that figures folder exist, and if not will create it
-    if not folder.exists():
-        if dryrun or verbose:
-            print("> mkdir %s" % folder)
-        if not dryrun:
-            folder.mkdir()
-
-
-class _FlowTimeFilter:
-    """Selects .bin config with correct flow time."""
-
-    def __init__(self, flow_time: int):
-        assert isinstance(flow_time, int)
-        self.flow_time = flow_time
-
-    def __call__(self, file_path: Path) -> bool:
-        """Function for checking if the correct file has been selected.
-
-        Args:
-            file_path (Path): Description
-
-        Returns:
-            bool: Description
-        """
-        # TODO: make sure we can locate any type
-        # TODO: redundant once we load an entire folder. Check order instead.
-        found_flow_time = re.findall(r"(\d+).bin", str(file_path))
-        assert len(found_flow_time) == 1, (
-            f"Multiple configs for similar flow time {self.flow_time}:"
-            f"\n{found_flow_time}"
-        )
-        if int(self.flow_time) == int(found_flow_time[0]):
-            return True
-        else:
-            return False
 
 
 def load_field_from_file(
     file: Path,
-    N: int,
-    NT: int,
+    n: int,
+    nt: int,
     euclidean_time: Optional[int] = None,
-    data_order: str = "F",
-):
+) -> np.ndarray:
     """
     Loads field from file.
 
     Args:
         file (Path): path to .bin file containing lattice data.
-        N (int): spatial time.
-        NT (int): temporal time.
+        n (int): spatial time.
+        nt (int): temporal time.
         euclidean_time (Optional[int], optional): what Euclidean time slice
             to look at. Default is retrieving all Euclidean time slices.
-        data_order (str, optional): data structure. Either "C" or "F".
     """
-    assert data_order in ["F", "C"], f"Unknown data order type: {data_order}"
-
     if euclidean_time is None:
-        return np.fromfile(file, dtype=float).reshape(
-            (N, N, N, NT), order=data_order
-        )
+        return np.fromfile(file, dtype=float).reshape((n, n, n, nt), order="F")
     else:
 
         # Loads euclidean time
-        block_size = N ** 3 * 8  # 8 is bytes
+        block_size = n ** 3 * 8  # 8 is bytes
         start = euclidean_time * block_size
 
         with open(file, "rb") as fp:
@@ -88,65 +36,82 @@ def load_field_from_file(
             block = fp.read(block_size)
             block = np.frombuffer(block, dtype=np.double)
 
-        return np.array(block).reshape((N, N, N), order=data_order)
+        return np.array(block).reshape((n, n, n), order="F")
 
 
-def load_folder_data(
-    folder: Path,
-    N: int,
-    NT: int,
-    euclidean_time: Optional[int] = None,
-    flow_time: Optional[int] = None,
-    data_order: str = "F",
-):
-    """
-    Loads folder containing binary data.
+def _check_file_sorting(observable_config_path: list[Path]) -> None:
+    """Checks the order of input files."""
+    _names = list(map(lambda f: f.name, observable_config_path))
+    _names_sorted = list(
+        sorted(_names, key=lambda f: re.findall(r"(\d+).bin", f)[0])
+    )
+    _is_match = [f0 == f1 for f0, f1 in zip(_names, _names_sorted)]
+    if sum(_is_match) != len(_is_match):
+        logger.warning("Possible unsorted input files detected. Continuing.")
+
+
+def load_fields(
+    observable_config_path: list[Path],
+    n: int,
+    nt: int,
+    time_slice: Optional[int] = None,
+) -> np.ndarray:
+    """Load data from provided path(s).
+
+    Assumes a input configurations is a hypercube of shape (n, n, n, nt) on
+    fortran ordering, i.e. column-major ordering.
 
     Args:
-        folder (Path): Folder containing observable(s).
-        N (int): spatial points.
-        NT (int): temporal points.
-        euclidean_time (Optional[int], optional): euclidean time slice to
-            render.
-        flow_time (Optional[int], optional): flow time to select and render.
-        data_order (str, optional): memory structure of the data. Default is
-            Fortran, that is (time, z, y, x).
+        observable_config_path (list(Path)): List of paths containing
+            observable(s) of configurations.
+        n (int): spatial points.
+        nt (int): temporal points.
+        time_slice (Optional[int], optional): time slice to render.
+
+    Raises:
+        ValueError: if selected time slice exceeds temporal dimension.
+
+    Returns:
+        hypercube with the axis to animate over as the first axis.
     """
 
-    assert (euclidean_time is None) ^ (
-        flow_time is None
-    ), "Either choose Euclidean time of Flow time"
+    if len(observable_config_path) > 1:
+        _check_file_sorting(observable_config_path)
 
-    folder_files = sorted(folder.glob("*.bin"))
+        if time_slice is None:
+            raise ValueError(
+                "Multiple observable configurations"
+                f"(={len(observable_config_path)}) require a time "
+                f"slice(={time_slice})."
+            )
+
+        if time_slice is not None and time_slice >= nt:
+            raise ValueError(
+                f"time_slice={time_slice} is greater or equal than the"
+                f" temporal dimension nt={nt}"
+            )
+    elif len(observable_config_path) == 1:
+        if time_slice is not None:
+            raise ValueError(
+                "Cannot animate from a single field configuration at a given"
+                f" time slice(={time_slice})."
+            )
+    else:
+        raise ValueError("No configurations provided.")
 
     data = []
 
-    if flow_time:
-        assert isinstance(flow_time, int)
-
-        _flow_time_filter = _FlowTimeFilter(flow_time)
-        _tmp_folder_files = list(filter(_flow_time_filter, folder_files))
-
-        if len(_tmp_folder_files) == 0:
-            raise IOError(
-                f"No flow data with flow time {flow_time} found among "
-                f"following files: \n{', '.join(folder_files)}"
-            )
-
-        folder_files = _tmp_folder_files
-    else:
-        assert isinstance(euclidean_time, int)
-
-    for _f in tqdm(folder_files, desc=f"Reading in data from {folder}"):
-
+    for field_path in tqdm(
+        observable_config_path,
+        desc=f"Reading in data from {len(observable_config_path)} files."
+    ):
+        tqdm.write(f"{str(field_path)}")
         data.append(
-            load_field_from_file(
-                _f, N, NT, euclidean_time=euclidean_time, data_order=data_order
-            )
+            load_field_from_file(field_path, n, nt, euclidean_time=time_slice)
         )
 
     # Making sure we return with zeroth axis as the one to animate with.
-    if flow_time:
+    if len(observable_config_path) == 1:
         data = np.rollaxis(data[0], -1, 0)
     else:
         data = np.asarray(data)
