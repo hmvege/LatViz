@@ -1,8 +1,8 @@
 import datetime
 from pathlib import Path
 
-import click
-from loguru import logger
+import click  # type: ignore[import]
+from loguru import logger  # type: ignore[import]
 
 from latviz.latviz import create_animation, plot_iso_surface
 from latviz.utils import load_fields

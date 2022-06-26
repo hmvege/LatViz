@@ -99,7 +99,7 @@ def create_animation(
     logger.info(f"Running command: {' '.join(cmd)}")
 
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    _ = proc.stdout.read()
+    _ = proc.stdout.read()  # type: ignore[union-attr]
 
     logger.success(f"Animation {animation_path} created.")
 

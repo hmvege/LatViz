@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "setuptools_scm[toml]>=6.3.1", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "latviz"
+description = "A tool for producing visualizations of Lattice QCD fields. Accepts fields as binary files, where the order is (t, x, y, z)."
+readme = "README.md"
+requires-python = ">=3.9"
+version = "0.0.2"
+license = {file = "LICENSE"}
+authors = [{name = "Mathias Vege"}]
+dependencies = [
+    "click>=8.0.3",
+    "loguru>=0.5.3",
+    "numpy>=1.21.4",
+    "pyvista>=0.32.1",
+    "tqdm>=4.62.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=22.3.0",
+    "flake8>=4.0.1",
+    "mypy>=0.961",
+    "pytest>=7.1.2",
+    "pre-commit>=2.19.0"
+]
+
+[tool.setuptools]
+packages = ["latviz"]
+
+[project.scripts]
+latviz = "latviz.cli:latviz"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = ["test"]
+
+[tool.black]
+line-length = 79
+target_version = ["py39"]
+
+[tool.flake8]
+max-line-length = 79
+extend-ignore = "E203"
+
+[tool.mypy]
+python_version = "3.9"
+ignore_missing_imports = true
