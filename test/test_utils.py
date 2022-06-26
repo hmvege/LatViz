@@ -4,14 +4,14 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from _pytest.logging import caplog as _caplog
+from _pytest.logging import caplog as _caplog  # noqa: F401
 from loguru import logger
 
 from latviz.utils import load_field_from_file, load_fields, _check_file_sorting
 
 
 @pytest.fixture
-def caplog(_caplog):
+def caplog(_caplog):  # noqa: F811
     """Helper class for verifying warning message."""
     class PropagateHandler(logging.Handler):
         def emit(self, record):

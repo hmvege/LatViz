@@ -41,6 +41,17 @@ Ensure you have a clean Python `3.9>=` environment, then install by pip
 pip install latviz
 ```
 
+### Development installation
+Install development mode by,
+
+```
+pip install -e ".[dev]"
+```
+and then enable pre-commits by
+```
+pre-commit install
+```
+
 ## User guide
 In its most basic usage, one needs to provide a file path to a binary file, spatial size of the hypercube, and the temporal size of the hyper cube(assuming shape of `(NT, N, N, N)`).
 ```
