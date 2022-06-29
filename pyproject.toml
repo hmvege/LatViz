@@ -7,7 +7,7 @@ name = "latviz"
 description = "A tool for producing visualizations of Lattice QCD fields. Accepts fields as binary files, where the order is (t, x, y, z)."
 readme = "README.md"
 requires-python = ">=3.9"
-version = "0.0.2"
+version = "0.1.0"
 license = {file = "LICENSE"}
 authors = [{name = "Mathias Vege"}]
 dependencies = [
@@ -24,7 +24,8 @@ dev = [
     "flake8>=4.0.1",
     "mypy>=0.961",
     "pytest>=7.1.2",
-    "pre-commit>=2.19.0"
+    "pytest-cov>=3.0.0",
+    "pre-commit>=2.19.0",
 ]
 
 [tool.setuptools]
